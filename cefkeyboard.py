@@ -26,12 +26,12 @@ class CefKeyboardManagerSingleton():
         self.is_alt1 = False
         self.is_alt2 = False
     
-    def on_key_down(self, keyboard, keycode, text, modifiers):
+    def kivy_on_key_down(self, browser, keyboard, keycode, text, modifiers):
         #print "\non_key_down:", keycode, text, modifiers
         if keycode[0] == 27:
             # On escape release the keyboard, see the injected
             # javascript in OnLoadStart().
-            self.browser.GetFocusedFrame().ExecuteJavascript(
+            browser.GetFocusedFrame().ExecuteJavascript(
                     "__kivy__on_escape()")
             return
 
@@ -59,7 +59,7 @@ class CefKeyboardManagerSingleton():
                      "modifiers": cef_modifiers
                      }
         #print("keydown keyEvent: %s" % key_event)
-        self.browser.SendKeyEvent(key_event)
+        browser.SendKeyEvent(key_event)
 
         if keycode[0] == 304:
             self.is_shift1 = True
@@ -74,7 +74,7 @@ class CefKeyboardManagerSingleton():
         elif keycode[0] == 313:
             self.is_alt2 = True
 
-    def on_key_up(self, keyboard, keycode):
+    def kivy_on_key_up(self, browser, keyboard, keycode):
         #print("\non_key_up(): keycode = %s" % (keycode,))
         cef_modifiers = cefpython.EVENTFLAG_NONE
         if self.is_shift1 or self.is_shift2:
@@ -92,7 +92,7 @@ class CefKeyboardManagerSingleton():
                         "native_key_code": cef_key_code,
                         "modifiers": cef_modifiers
                         }
-            self.browser.SendKeyEvent(key_event)
+            browser.SendKeyEvent(key_event)
 
         if keycode[0] == 304:
             self.is_shift1 = False
