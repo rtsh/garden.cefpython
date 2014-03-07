@@ -63,7 +63,7 @@ if not exists(libcef) and LIB_ID in SOURCES:
     if exists(path):
         os.unlink(path)
     if not exists(CEF_DIR):
-        os.mkdir(CEF_DIR)
+        os.makedirs(CEF_DIR)
     import urllib2
     fp = open(path, "w+")
     fh = urllib2.urlopen(s["url"])
