@@ -1,0 +1,34 @@
+{
+    "linux32.py2":{
+        "url":"http://cefpython.googlecode.com/files/cefpython3-29.2-ubuntu1204-32bit-setup.zip",
+        "type":"zip",
+        "zip_files":{
+            "cefpython_py27.so":"cefpython3-29.2-ubuntu1204-32bit-setup/cefpython3/cefpython_py27.so",
+            "libcef.so":"cefpython3-29.2-ubuntu1204-32bit-setup/cefpython3/libcef.so",
+            "locales":"cefpython3-29.2-ubuntu1204-32bit-setup/cefpython3/locales",
+            "subprocess":"cefpython3-29.2-ubuntu1204-32bit-setup/cefpython3/subprocess"
+        }
+    },
+    "linux64.py2":{
+        "url":"http://cefpython.googlecode.com/files/cefpython3-29.2-ubuntu1204-64bit-setup.zip",
+        "type":"zip",
+        "zip_files":{
+            "cefpython_py27.so":"cefpython3-29.2-ubuntu1204-64bit-setup/cefpython3/cefpython_py27.so",
+            "libcef.so":"cefpython3-29.2-ubuntu1204-64bit-setup/cefpython3/libcef.so",
+            "locales":"cefpython3-29.2-ubuntu1204-64bit-setup/cefpython3/locales",
+            "subprocess":"cefpython3-29.2-ubuntu1204-64bit-setup/cefpython3/subprocess"
+        }
+    },
+    "win32.py2":{
+        "url":"http://cefpython.googlecode.com/files/cefpython3-29.4.win32-py2.7-setup.zip",
+        "type":"zip",
+        "zip_files":{
+            "cef.pak":"cefpython3-29.4.win32-py2.7-setup/cefpython3/cef.pak",
+            "cefpython_py27.pyd":"cefpython3-29.4.win32-py2.7-setup/cefpython3/cefpython_py27.pyd",
+            "icudt.dll":"cefpython3-29.4.win32-py2.7-setup/cefpython3/icudt.dll",
+            "libcef.dll":"cefpython3-29.4.win32-py2.7-setup/cefpython3/libcef.dll",
+            "locales":"cefpython3-29.4.win32-py2.7-setup/cefpython3/locales",
+            "subprocess.exe":"cefpython3-29.4.win32-py2.7-setup/cefpython3/subprocess.exe"
+        }
+    }
+}

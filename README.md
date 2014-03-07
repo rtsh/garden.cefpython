@@ -1,13 +1,21 @@
-# CEF widget
+CEF widget
+----------
 
-This is a widget that embed https://code.google.com/p/cefpython into a Kivy widget.
+This is a widget that embed [cefpython](https://code.google.com/p/cefpython)
+into a Kivy widget.
 Works currently on Linux and Windows 64bit with python 2.7.
 
-This project shouldn't considered stable. There are major things (ex. popups) which aren't implemented or causing proplems.
-Tested on Ubuntu 12.04 with the follwoing debian packages installed: libnss3-1d libnspr4-0d
+This project shouldn't be considered stable. There are major things 
+(e.g. popups) which aren't implemented or causing proplems.
+Tested on Ubuntu 12.04 64bit with the follwoing debian packages installed:
+`libnss3-1d libnspr4-0d`
+If it does not work on Windows, it is most probably, because not all the
+needed DLLs are copied correctly from the downloaded ZIP file. You would then
+need to edit `lib/cefpython_sources.json`.
 
 
-# Example
+Example
+-------
 
     from kivy.garden.cefpython import CefBrowser, cefpython
     from kivy.app import App
@@ -20,8 +28,3 @@ Tested on Ubuntu 12.04 with the follwoing debian packages installed: libnss3-1d 
     
     cefpython.Shutdown()
 
-
-# Hints
-
-Don't use browser.Navigate() to chang the url. Use the function change_url(url) instead.
-Read in '__init__.py' at function change_url() why.

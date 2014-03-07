@@ -1,2 +1,4 @@
 *.pyc
-debug.log
+*~
+*debug.log
+lib/cefpython/*
