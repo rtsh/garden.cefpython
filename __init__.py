@@ -9,38 +9,44 @@ contains two buttons (back, forward) and the browser view.
 '''
 
 from kivy.app import App
-from kivy.lang import Builder
-from kivy.uix.boxlayout import BoxLayout
+from kivy.clock import Clock
+from kivy.uix.button import Button
+from kivy.uix.gridlayout import GridLayout
 from lib.cefpython import *
 from cefbrowser import CefBrowser
 
 
 if __name__ == '__main__':
-
-    Builder.load_string("""
-<BrowserLayout>:
-    orientation: 'vertical'
-    BoxLayout:
-        size_hint_y: None
-        height: '48dp'
-        Button:
-            text: "Back"
-            on_press: browser.go_back()
-        Button:
-            text: "Forward"
-            on_press: browser.go_forward()
-    CefBrowser:
-        id: browser
-
-""")
-
-    class BrowserLayout(BoxLayout):
-        pass
-
-    class CefBrowserApp(App):
+    class CefApp(App):
         def build(self):
-            return CefBrowser(url="file:///home/rentouch/cef/cefpython/cefpython/cef3/linux/binaries_64bit/wxpython.html")
-            #return BrowserLayout()
-    CefBrowserApp().run()
+            self.gl = GridLayout(cols=2)
+            self.b1 = Button(text="Gaggi1", height=32, size_hint=(1, None))
+            self.b2 = Button(text="Gaggi2", height=32, size_hint=(1, None))
+            self.cb1 = CefBrowser(url=test_url)
+            self.cb2 = CefBrowser(url="http://www.kivy.org")
+            def set1(*largs):
+                print "#########################################"
+                print self.cb1, self.cb2
+                self.cb1.url = "http://www.google.com"
+            self.b1.bind(on_press=set1)
+            def set2(*largs):
+                print "#########################################"
+                print self.cb2, self.cb1
+                self.cb2.url = "http://www.google.com"
+            self.b2.bind(on_press=set2)
+            def didset1(*largs):
+                print "#########################################"
+                print largs
+            self.cb1.bind(on_address_change=didset1)
+            def didset2(*largs):
+                print "#########################################"
+                print largs
+            self.cb2.bind(on_address_change=didset2)
+            self.gl.add_widget(self.b1)
+            self.gl.add_widget(self.b2)
+            self.gl.add_widget(self.cb1)
+            self.gl.add_widget(self.cb2)
+            return self.gl
+    CefApp().run()
 
     cefpython.Shutdown()
