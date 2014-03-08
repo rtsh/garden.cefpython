@@ -126,7 +126,7 @@ class CefControlledBrowser(Widget):
     
     def change_url(self, *largs):
         url = self.url_input.text
-        if not re.match("^https?\:\/\/", url):
+        if not re.match("^[a-zA-Z][a-zA-Z0-9\+\.\-]*\:\/\/", url):
             url = "http://"+url
         self.cef_browser.url = url
         self.url_input.select_text(len(url), len(url))

@@ -14,6 +14,7 @@ CefControlledBrowser with CefBrowser)
 
 from kivy.app import App
 from kivy.base import EventLoop
+from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 from kivy.graphics.texture import Texture
@@ -53,7 +54,7 @@ class CefBrowser(Widget):
             self.__rect = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
         windowInfo = cefpython.WindowInfo()
         windowInfo.SetAsOffscreen(0)
-        self.browser = cefpython.CreateBrowserSync(windowInfo, {}, navigateUrl=self.url)
+        self.browser = cefpython.CreateBrowserSync(windowInfo, {}, self.url)
         self.browser.SendFocusEvent(True)
         ch = ClientHandler(self)
         self.browser.SetClientHandler(ch)
@@ -96,6 +97,7 @@ class CefBrowser(Widget):
             self.__rect.texture = self.texture
     
     def set_url(self, *largs):
+        self.browser.StopLoad()
         self.browser.Navigate(self.url)
     
     def set_keyboard_mode(self, *largs):
@@ -290,9 +292,7 @@ class ClientHandler():
     # LifeSpanHandler
 
     def OnBeforePopup(self, browser, frame, url, *largs):
-        print "OBEFPOP I"
         self.browser_widget.dispatch("on_before_popup", frame, url)
-        print "OBEFPOP II"
         return True
     
     # LoadHandler
@@ -345,7 +345,7 @@ class ClientHandler():
     
     def OnLoadEnd(self, browser, frame, httpStatusCode):
         self.browser_widget.dispatch("on_load_end", frame, httpStatusCode)
-        #largs[0].SetZoomLevel(2.0) # this works at this point
+        #browser.SetZoomLevel(2.0) # this works at this point
     
     def OnLoadError(self, browser, frame, errorCode, errorText, failedUrl):
         self.browser_widget.dispatch("on_load_error", frame, errorCode, errorText, failedUrl)
@@ -356,7 +356,7 @@ class ClientHandler():
     # RenderHandler
     
     def GetRootScreenRect(self, *largs):
-        pass
+        return False
     
     def GetViewRect(self, browser, rect):
         width, height = self.browser_widget.texture.size
@@ -378,6 +378,7 @@ class ClientHandler():
             self.browser_widget.add_widget(self.browser_widget.popup)
     
     def OnPopupSize(self, browser, rect):
+        print "NEW RECT", rect
         self.browser_widget.popup.rpos = (rect[0], rect[1])
         self.browser_widget.popup.size = (rect[2], rect[3])
          
@@ -438,7 +439,6 @@ if __name__ == '__main__':
             #self.cb.keyboard_mode = "global"
         def build(self):
             self.cb = CefBrowser(url="http://kivy.org")
-            from kivy.clock import Clock
             Clock.schedule_once(self.timeout, 5)
             return self.cb
 

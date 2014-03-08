@@ -13,6 +13,7 @@
         "url":"http://cefpython.googlecode.com/files/cefpython3-29.2-ubuntu1204-64bit-setup.zip",
         "type":"zip",
         "zip_files":{
+            "cef.pak":"cefpython3-29.2-ubuntu1204-64bit-setup/cefpython3/cef.pak",
             "cefpython_py27.so":"cefpython3-29.2-ubuntu1204-64bit-setup/cefpython3/cefpython_py27.so",
             "libcef.so":"cefpython3-29.2-ubuntu1204-64bit-setup/cefpython3/libcef.so",
             "locales":"cefpython3-29.2-ubuntu1204-64bit-setup/cefpython3/locales",

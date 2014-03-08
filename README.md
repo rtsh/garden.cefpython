@@ -28,3 +28,12 @@ Example
     
     cefpython.Shutdown()
 
+Issues
+------
+
+- Select tags (more precisely, their popups) don't have the right size.
+    This is mot probably because of the lack of the GetScreenInfo method
+
+- Tabbed Browser: all commands are being redirected to the first browser.
+    This is a bug in CEFPython: 
+    http://code.google.com/p/cefpython/issues/detail?id=97
