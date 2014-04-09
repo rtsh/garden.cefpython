@@ -83,6 +83,7 @@ class CefBrowser(Widget):
                 self.update_rect()
         if self.browser:
             self.browser.WasResized()
+            self.browser.NotifyScreenInfoChanged()
         # Bring keyboard to front
         try:
             k = self.__keyboard.widget
