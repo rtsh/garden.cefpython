@@ -8,21 +8,25 @@ In this example kivy-lang is used to declare the layout which
 contains two buttons (back, forward) and the browser view.
 '''
 
-from kivy.app import App
-from kivy.clock import Clock
-from kivy.uix.button import Button
-from kivy.uix.gridlayout import GridLayout
-from lib.cefpython import *
+__all__ = ('cef_test_url', 'CefBrowser', )
+
+import os
+
 from cefbrowser import CefBrowser
 
+cef_test_url = "file://"+os.path.join(os.path.dirname(os.path.realpath(__file__)), "test.html")
 
 if __name__ == '__main__':
+    from kivy.app import App
+    from kivy.clock import Clock
+    from kivy.uix.button import Button
+    from kivy.uix.gridlayout import GridLayout
     class CefApp(App):
         def build(self):
             self.gl = GridLayout(cols=2)
             self.b1 = Button(text="Gaggi1", height=32, size_hint=(1, None))
             self.b2 = Button(text="Gaggi2", height=32, size_hint=(1, None))
-            self.cb1 = CefBrowser(url=test_url)
+            self.cb1 = CefBrowser(url=cef_test_url)
             self.cb2 = CefBrowser(url="http://www.kivy.org")
             def set1(*largs):
                 print "#########################################"

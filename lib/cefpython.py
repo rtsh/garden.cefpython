@@ -4,9 +4,10 @@ This library providers functions to automatically download the precompiled
 It then imports the cefpython module.
 '''
 
-__all__ = ('cefpython', 'test_url')
+__all__ = ('cefpython', )
 
 from kivy.clock import Clock
+from kivy.logger import Logger
 from os.path import dirname, join, exists, realpath
 import ctypes
 import json
@@ -17,9 +18,12 @@ PLATFORM = "linux"
 try: # New API
     from kivy import platform
     PLATFORM = platform
-except: # Deprecated API
-    from kivy.utils import platform
-    PLATFORM = platform()
+except Exception as err1:
+    try: # Deprecated API
+        from kivy.utils import platform
+        PLATFORM = platform()
+    except Exception as err2:
+        Logger.warning("CEFLoader: could not get current platform: %s %s", err1, err2)
 PYVERSION = sys.version_info[0]
 BITS = "64" if sys.maxint > 2 ** 31 else "32"
 PARDIR = realpath(dirname(__file__))
@@ -30,11 +34,19 @@ SUBPROCESS = "subprocess"
 fp = open(join(PARDIR, "cefpython_sources.json"), "r")
 SOURCES = json.load(fp)
 fp.close()
+Logger.debug("CEFLoader: PLATFORM: %s", PLATFORM)
+Logger.debug("CEFLoader: PYVERSION: %s", PYVERSION)
+Logger.debug("CEFLoader: BITS: %s", BITS)
+Logger.debug("CEFLoader: PARDIR: %s", PARDIR)
+Logger.debug("CEFLoader: CURDIR: %s", CURDIR)
+Logger.debug("CEFLoader: LIB_ID: %s", LIB_ID)
+Logger.debug("CEFLoader: CEF_DIR: %s", CEF_DIR)
+Logger.debug("CEFLoader: SUBPROCESS: %s", SUBPROCESS)
 
 if PLATFORM == 'linux':
     # correctly locate libcef.so (we need to extend
     # LD_LIBRARY_PATH for subprocess executable)
-    libcef = join(CEF_DIR, 'libcef.so')
+    libcef = join(CEF_DIR, "libcef.so")
     LD_LIBRARY_PATH = os.environ.get('LD_LIBRARY_PATH', None)
     if not LD_LIBRARY_PATH:
         LD_LIBRARY_PATH = CEF_DIR
@@ -44,7 +56,7 @@ if PLATFORM == 'linux':
 elif PLATFORM == 'win':
     # Add the DLL and export the PATH for windows
     SUBPROCESS += ".exe"
-    libcef = join(CEF_DIR, 'libcef.dll')
+    libcef = join(CEF_DIR, "libcef.dll")
     PATH = os.environ.get('PATH', None)
     if not PATH:
         PATH = CEF_DIR
@@ -52,30 +64,40 @@ elif PLATFORM == 'win':
         PATH += os.pathsep + CEF_DIR
     os.putenv('PATH', PATH)
 else:
-    raise Exception("Unsupported/untested platform.")
+    Logger.critical("CEFLoader: Unsupported platform: %s", PLATFORM)
+    raise Exception("Unsupported platform")
 sys.path += [CEF_DIR]
 
 # Load precompiled cefpython from source
 if not exists(libcef) and LIB_ID in SOURCES:
     s = SOURCES[LIB_ID]
-    print "Load precompiled cefpython (for "+LIB_ID+") from source..."
+    Logger.debug("CEFLoader: SOURCE: %s", json.dumps(s, indent=4))
+    Logger.info("CEFLoader: Loading precompiled cefpython for "+LIB_ID+"...")
     path = CEF_DIR+".dat"
     if exists(path):
         os.unlink(path)
     if not exists(CEF_DIR):
         os.makedirs(CEF_DIR)
     import urllib2
+    Logger.debug("CEFLoader: Downloading from "+s["url"]+" ...")
     fp = open(path, "w+")
     fh = urllib2.urlopen(s["url"])
     buf = True
+    cur = 0
+    tot = int(fh.info()["Content-Length"])
+    stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
     while buf:
         buf = fh.read(4096)
+        cur += len(buf)
+        stdout.write("Downloading: %3i%%\r"%(cur*100/tot))
+        stdout.flush()
         fp.write(buf)
     fh.close()
     fp.close()
+    Logger.info("CEFLoader: Loaded precompiled cefpython for "+LIB_ID+" successfully")
     if "type" in s:
         if s["type"]=="zip":
-            print "Unzipping..."
+            Logger.info("CEFLoader: Unzipping precompiled cefpython for "+LIB_ID+"...")
             import shutil
             import zipfile
             z = zipfile.ZipFile(path)
@@ -83,43 +105,53 @@ if not exists(libcef) and LIB_ID in SOURCES:
             for f in s["zip_files"]:
                 src = join(CURDIR, s["zip_files"][f].replace("/", os.sep))
                 dest = join(CEF_DIR, f)
-                print "Copy "+f+"..."
+                Logger.debug("CEFLoader: Copying "+src+" => "+dest+" ...")
                 if os.path.isfile(src):
                     shutil.copy(src, dest)
                 elif os.path.isdir(src):
                     shutil.copytree(src, dest)
                 os.chmod(dest, 0775)
-            print "Clean up..."
+            Logger.debug("CEFLoader: Cleaning up...")
             n = z.namelist()[0]
             ziproot = n[0:n.find(os.sep)]
             shutil.rmtree(join(CURDIR, ziproot))
+            Logger.info("CEFLoader: Unzipped precompiled cefpython for "+LIB_ID+" successfully")
         else:
-            print "Invalid source entry for "+LIB_ID+": 'type' not known: "+s["type"]+"."
+            Logger.warning("CEFLoader: Invalid source entry for "+LIB_ID+": 'type' not known: "+s["type"]+"")
     else:
-        print "Uncomplete source entry for "+LIB_ID+": 'type' key not present."
+        Logger.warning("CEFLoader: Incomplete source entry for "+LIB_ID+": 'type' key not present")
     os.unlink(path)
 
-if exists(libcef):
-    # Import local module
-    ctypes.CDLL(libcef, ctypes.RTLD_GLOBAL)
-    if 0x02070000 <= sys.hexversion < 0x03000000:
-        import cefpython_py27 as cefpython
-        print "cefpython imported from %s"%(libcef, )
+try:
+    if exists(libcef):
+        # Import local module
+        ctypes.CDLL(libcef, ctypes.RTLD_GLOBAL)
+        if 0x02070000 <= sys.hexversion < 0x03000000:
+            import cefpython_py27 as cefpython
+            Logger.info("CEFLoader: cefpython imported from %s"%(libcef, ))
+        else:
+            Logger.critical("CEFLoader: Unsupported python version: %s"%(sys.version, ))
+            raise Exception("Unsupported python version: %s"%(sys.version, ))
     else:
-        raise Exception("Unsupported python version: %s" % sys.version)
-else:
-    # Import from package
-    from cefpython3 import cefpython
-    print "cefpython imported from package"
+        # Import from package
+        from cefpython3 import cefpython
+        Logger.info("CEFLoader: cefpython imported from package")
+except:
+    Logger.critical("CEFLoader: Failed to import cefpython")
+    raise Exception("Failed to import cefpython")
 
 md = ""
 try:
     md = cefpython.GetModuleDirectory()
     def cef_loop(*largs):
-        cefpython.MessageLoopWork()
+        try:
+            cefpython.MessageLoopWork()
+        except:
+            print "EXCEPTION IN CEF LOOP"
     Clock.schedule_interval(cef_loop, 0)
 except:
-    raise Exception("cefpython was not imported.")
+    Logger.critical("CEFLoader: cefpython was not imported")
+    raise Exception("cefpython was not imported")
 settings = {
     "debug": True,
     "log_severity": cefpython.LOGSEVERITY_INFO,
@@ -135,5 +167,15 @@ except:
     del settings["debug"]
     cefpython.g_debug = True
     cefpython.g_debugFile = "debug.log"
-    cefpython.Initialize(settings)
-test_url = "file://"+join(dirname(PARDIR), "test.html")
+    try:
+        cefpython.Initialize(settings)
+    except:
+        Logger.critical("CEFLoader: Failed to initialize cefpython")
+        raise Exception("Failed to initialize cefpython")
+
+try:
+    cookie_manager = cefpython.CookieManager.GetGlobalManager()
+    cookie_path = os.path.join(md, "cookies")
+    cookie_manager.SetStoragePath(cookie_path, True)
+except:
+    Logger.warning("CEFLoader: Failed to set up cookie manager")
