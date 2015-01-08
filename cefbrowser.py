@@ -263,6 +263,7 @@ class CefBrowser(Widget):
         self.__keyboard.unbind(on_key_up=self.on_key_up)
         self.__keyboard.release()
         self.__keyboard = None
+        self.browser.SendFocusEvent(False)
 
     def on_key_down(self, *largs):
         print("KEY DOWN", largs)
