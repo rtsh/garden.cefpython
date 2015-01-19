@@ -13,6 +13,7 @@ import ctypes
 import json
 import os
 import sys
+import multiprocessing
 
 PLATFORM = "linux"
 try: # New API
@@ -78,50 +79,107 @@ if not exists(libcef) and LIB_ID in SOURCES:
         os.unlink(path)
     if not exists(CEF_DIR):
         os.makedirs(CEF_DIR)
-    import urllib2
     Logger.debug("CEFLoader: Downloading from "+s["url"]+" ...")
-    fp = open(path, "w+")
-    fh = urllib2.urlopen(s["url"])
-    buf = True
-    cur = 0
-    tot = int(fh.info()["Content-Length"])
-    stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
-    while buf:
-        buf = fh.read(4096)
-        cur += len(buf)
-        stdout.write("Downloading: %3i%%\r"%(cur*100/tot))
-        stdout.flush()
-        fp.write(buf)
-    fh.close()
-    fp.close()
-    Logger.info("CEFLoader: Loaded precompiled cefpython for "+LIB_ID+" successfully")
-    if "type" in s:
-        if s["type"]=="zip":
-            Logger.info("CEFLoader: Unzipping precompiled cefpython for "+LIB_ID+"...")
-            import shutil
-            import zipfile
-            z = zipfile.ZipFile(path)
-            z.extractall(CURDIR)
-            for f in s["zip_files"]:
-                src = join(CURDIR, s["zip_files"][f].replace("/", os.sep))
-                dest = join(CEF_DIR, f)
-                Logger.debug("CEFLoader: Copying "+src+" => "+dest+" ...")
-                if os.path.isfile(src):
-                    shutil.copy(src, dest)
-                elif os.path.isdir(src):
-                    shutil.copytree(src, dest)
-                os.chmod(dest, 0775)
-            Logger.debug("CEFLoader: Cleaning up...")
-            n = z.namelist()[0]
-            ziproot = n[0:n.find(os.sep)]
-            shutil.rmtree(join(CURDIR, ziproot))
-            Logger.info("CEFLoader: Unzipped precompiled cefpython for "+LIB_ID+" successfully")
+    
+    from kivy.app import App
+    from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.label import Label
+    from kivy.uix.popup import Popup
+    from kivy.uix.progressbar import ProgressBar
+    
+    content = BoxLayout(orientation='vertical')
+    prgr = ProgressBar(max=100)
+    prgr.value = 0
+    content.add_widget(prgr)
+    lab = Label(text="Downloading precompiled CEFPython...")
+    content.add_widget(lab)
+    
+    popup = Popup(title="Chromium Embedded Framework Installer", content=content, size_hint=(0.75, None), height=200, auto_dismiss=False)
+    content.bind(on_press=popup.dismiss)
+    
+    def download(s, path, progress, label_queue):
+        import urllib2
+        fp = open(path, "w+")
+        fh = urllib2.urlopen(s["url"])
+        buf = True
+        cur = 0
+        tot = int(fh.info()["Content-Length"])
+        stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+        while buf:
+            buf = fh.read(8192)
+            cur += len(buf)
+            percent = cur*100./tot
+            stdout.write("Downloading: %3i%%\r"%(percent,))
+            stdout.flush()
+            progress.value = percent*0.8
+            label_queue.put("Downloading precompiled CEFPython... (%i%%)"%(percent,), False)
+            fp.write(buf)
+        fh.close()
+        fp.close()
+        Logger.info("CEFLoader: Loaded precompiled cefpython for "+LIB_ID+" successfully")
+        if "type" in s:
+            if s["type"]=="zip":
+                Logger.info("CEFLoader: Unzipping precompiled cefpython for "+LIB_ID+"...")
+                label_queue.put("Unzipping precompiled CEFPython...", False)
+                progress.value = percent*0.8
+                import shutil
+                import zipfile
+                z = zipfile.ZipFile(path)
+                z.extractall(CURDIR)
+                cnt = len(s["zip_files"])
+                i = 0
+                for f in s["zip_files"]:
+                    label_queue.put("Unzipping precompiled CEFPython... (%i of %i)"%(i, cnt), False)
+                    progress.value = 80+float(i)*20./cnt
+                    src = join(CURDIR, s["zip_files"][f].replace("/", os.sep))
+                    dest = join(CEF_DIR, f)
+                    Logger.debug("CEFLoader: Copying "+src+" => "+dest+" ...")
+                    if os.path.isfile(src):
+                        shutil.copy(src, dest)
+                    elif os.path.isdir(src):
+                        shutil.copytree(src, dest)
+                    os.chmod(dest, 0775)
+                    i += 1
+                Logger.debug("CEFLoader: Cleaning up...")
+                label_queue.put("Cleaning up...", False)
+                n = z.namelist()[0]
+                ziproot = n[0:n.find(os.sep)]
+                shutil.rmtree(join(CURDIR, ziproot))
+                Logger.info("CEFLoader: Unzipped precompiled cefpython for "+LIB_ID+" successfully")
+                label_queue.put("Finished.", False)
+                progress.value = 100.
+            else:
+                Logger.warning("CEFLoader: Invalid source entry for "+LIB_ID+": 'type' not known: "+s["type"]+"")
         else:
-            Logger.warning("CEFLoader: Invalid source entry for "+LIB_ID+": 'type' not known: "+s["type"]+"")
-    else:
-        Logger.warning("CEFLoader: Incomplete source entry for "+LIB_ID+": 'type' key not present")
-    os.unlink(path)
+            Logger.warning("CEFLoader: Incomplete source entry for "+LIB_ID+": 'type' key not present")
+        os.unlink(path)
 
+    progress = multiprocessing.Value('d', 0.0)
+    label_queue = multiprocessing.Queue()
+    download_proc = multiprocessing.Process(target=download, args=(s, path, progress, label_queue))
+    
+    class CefLoaderApp(App):
+        def build(self):
+            return popup
+        def on_start(self):
+            popup.open()
+    cef_loader_app = CefLoaderApp()
+    
+    download_proc.start()
+    def test_download(*largs):
+        try:
+            while True:
+                lab.text = label_queue.get(False)
+        except:
+            pass
+        prgr.value = progress.value
+        if download_proc.is_alive():
+            Clock.schedule_once(test_download, 0.05)
+        else:
+            cef_loader_app.stop()
+    Clock.schedule_once(test_download, 0.05)
+    cef_loader_app.run()
+    
 try:
     if exists(libcef):
         # Import local module

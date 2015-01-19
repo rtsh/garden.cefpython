@@ -3,7 +3,12 @@ Cef Keyboard Manager.
 Cef Keyboard management is complex, so we outsourced it to this file for
 better readability.
 '''
-from lib.cefpython import *
+
+__all__ = ('CefKeyboardManager', 'FixedKeyboard')
+
+from kivy.core.window import Window
+from kivy.uix.vkeyboard import VKeyboard
+from lib.cefpython import cefpython
 
 class CefKeyboardManagerSingleton():
     # Kivy does not provide modifiers in on_key_up, but these
@@ -53,7 +58,19 @@ class CefKeyboardManagerSingleton():
         # Convert every other key to it's utf8 int value and send this as the key
         if cef_key_code == keycode[0] and text:
             cef_key_code = ord(text)
+            
+            # We have to convert the apostrophes as the utf8 key-code somehow don't get recognized by cef
+            if cef_key_code == 96:
+                cef_key_code = 39
+            if cef_key_code == 8220:
+                cef_key_code = 34
+            
             event_type = cefpython.KEYEVENT_CHAR
+
+        # When the key is the return key, send it as a KEYEVENT_CHAR as it will not work in textinputs
+        if cef_key_code == 65293:
+            event_type = self.cefpython.KEYEVENT_CHAR
+
         key_event = {"type": event_type,
                      "native_key_code": cef_key_code,
                      "modifiers": cef_modifiers
@@ -145,3 +162,33 @@ class CefKeyboardManagerSingleton():
 
 
 CefKeyboardManager = CefKeyboardManagerSingleton()
+
+
+class FixedKeyboard(VKeyboard):
+    def __init__(self, **kwargs):
+        super(FixedKeyboard, self).__init__(**kwargs)
+        print("KB IN", self.do_rotation, self.do_translation)
+    
+    def on_touch_down(self, touch):
+        if self.collide_point(touch.x, touch.y):
+            self.do_translation = (True, True)
+            self.do_scale = True
+            self.do_rotation = False
+            touch.grab(self)
+            super(FixedKeyboard, self).on_touch_down(touch)
+            print("KB TD", self.do_rotation, self.do_translation)
+            return True
+    
+    def on_touch_move(self, touch):
+        if touch.grab_current is self:
+            super(FixedKeyboard, self).on_touch_move(touch)
+            print("KB TM", self.do_rotation, self.do_translation)
+            return True
+    
+    def on_touch_up(self, touch):
+        if touch.grab_current is self:
+            super(FixedKeyboard, self).on_touch_up(touch)
+            print("KB TU", self.do_rotation, self.do_translation)
+            return True
+
+Window.set_vkeyboard_class(FixedKeyboard)

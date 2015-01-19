@@ -4,7 +4,7 @@ browser:
 - If you want only the browser window, use cefbrowser.CefBrowser
 - If you want a single browser with controls (like "back", "forward", url
     input, etc.), use cefcontrolledbrowser.CefControlledBrowser
-- If you want a browser with tabs, user ceftabbedbrowser.CefTabbedBrowser
+- If you want a browser with tabs, use ceftabbedbrowser.CefTabbedBrowser
 
 You can subclass all those Widgets and modify some of their methods to make
 them look differently. e.g. you can make a tabbed browser which yet has no 
@@ -18,7 +18,7 @@ from kivy.graphics import Color, Rectangle
 from kivy.graphics.texture import Texture
 from kivy.properties import *
 from kivy.uix.widget import Widget
-from lib.cefpython import *
+from lib.cefpython import cefpython
 from cefkeyboard import CefKeyboardManager
 
 class CefBrowser(Widget):
