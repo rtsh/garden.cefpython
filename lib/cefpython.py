@@ -26,7 +26,7 @@ except Exception as err1:
     except Exception as err2:
         Logger.warning("CEFLoader: could not get current platform: %s %s", err1, err2)
 PYVERSION = sys.version_info[0]
-BITS = "64" if sys.maxint > 2 ** 31 else "32"
+BITS = "64" if sys.maxsize > 2**32 else "32"
 PARDIR = realpath(dirname(__file__))
 CURDIR = join(PARDIR, "cefpython")
 LIB_ID = "%s%s.py%i"%(PLATFORM, BITS, PYVERSION)
@@ -43,6 +43,7 @@ Logger.debug("CEFLoader: CURDIR: %s", CURDIR)
 Logger.debug("CEFLoader: LIB_ID: %s", LIB_ID)
 Logger.debug("CEFLoader: CEF_DIR: %s", CEF_DIR)
 Logger.debug("CEFLoader: SUBPROCESS: %s", SUBPROCESS)
+Logger.info("CEFLoader: LIB_ID: %s", LIB_ID)
 
 if PLATFORM == 'linux':
     # correctly locate libcef.so (we need to extend
@@ -138,7 +139,7 @@ if not exists(libcef) and LIB_ID in SOURCES:
                         shutil.copy(src, dest)
                     elif os.path.isdir(src):
                         shutil.copytree(src, dest)
-                    os.chmod(dest, 0775)
+                    os.chmod(dest, 0o0775)
                     i += 1
                 Logger.debug("CEFLoader: Cleaning up...")
                 label_queue.put("Cleaning up...", False)
@@ -205,7 +206,7 @@ try:
         try:
             cefpython.MessageLoopWork()
         except:
-            print "EXCEPTION IN CEF LOOP"
+            print("EXCEPTION IN CEF LOOP")
     Clock.schedule_interval(cef_loop, 0)
 except:
     Logger.critical("CEFLoader: cefpython was not imported")
@@ -234,6 +235,7 @@ except:
 try:
     cookie_manager = cefpython.CookieManager.GetGlobalManager()
     cookie_path = os.path.join(md, "cookies")
+    print "Cookies:", cookie_path
     cookie_manager.SetStoragePath(cookie_path, True)
 except:
     Logger.warning("CEFLoader: Failed to set up cookie manager")

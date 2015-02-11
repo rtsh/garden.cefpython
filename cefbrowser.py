@@ -12,7 +12,6 @@ controls on each tab (by overriding CefTabbedBrowser.get_browser and replacing
 CefControlledBrowser with CefBrowser)
 '''
 
-from kivy.base import EventLoop
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 from kivy.graphics.texture import Texture
@@ -26,22 +25,18 @@ class CefBrowser(Widget):
     # 1. Global mode forwards keys to CEF all the time.
     # 2. Local mode forwards keys to CEF only when an editable
     #    control is focused (input type=text|password or textarea).
-    keyboard_mode = OptionProperty("local", options=("global", "local"))
     url = StringProperty("about:blank")
     browser = None
     popup = None
     __rect = None
     __js_bindings = None  # See bind_js()
-    __reset_js_bindings = False  # TODO: Is this right?!? See bind_js()
 
     def __init__ (self, *largs, **dargs):
         self.url = dargs.pop("url", "about:blank")
-        self.keyboard_mode = dargs.pop("keyboard_mode", "local")
         self.browser = dargs.pop("browser", None)
         self.popup = CefBrowserPopup(self)
         self.__rect = None
         self.__js_bindings = None
-        self.__reset_js_bindings = False
         super(CefBrowser, self).__init__(**dargs)
 
         self.register_event_type("on_loading_state_change")
@@ -68,14 +63,10 @@ class CefBrowser(Widget):
             self.browser.SetClientHandler(client_handler)
 
         client_handler.browser_widgets[self.browser] = self
-        self.browser.SendFocusEvent(True)
-        #self.bind_js() # TODO: delete?
         self.browser.WasResized()
         self.bind(size=self.realign)
         self.bind(pos=self.realign)
-        self.bind(keyboard_mode=self.set_keyboard_mode)
-        if self.keyboard_mode == "global":
-            self.request_keyboard()
+        self.bind_js()
 
     def bind_js(self):
         # Needed to introduce bind_js again because the freeze of sites at load took over.
@@ -96,7 +87,9 @@ class CefBrowser(Widget):
         if not self.__js_bindings:
             self.__js_bindings = cefpython.JavascriptBindings(bindToFrames=True, bindToPopups=True)
             self.__js_bindings.SetFunction("__kivy__keyboard_update", self.keyboard_update)
-        self.browser.SetJavascriptBindings(self.__js_bindings)
+            self.browser.SetJavascriptBindings(self.__js_bindings)
+        else:
+            self.__js_bindings.Rebind()
 
     def realign(self, *largs):
         ts = self.texture.size
@@ -130,16 +123,9 @@ class CefBrowser(Widget):
             self.__rect.texture = self.texture
 
     def on_url(self, instance, value):
-        print "ON URL", instance, value, self.browser.GetUrl()
-        if self.browser and value:
+        print("ON URL", instance, value, self.browser.GetUrl())
+        if self.browser and value and value!=self.browser.GetUrl():
             self.browser.Navigate(self.url)
-            self.__reset_js_bindings = True
-
-    def set_keyboard_mode(self, *largs):
-        if self.keyboard_mode == "global":
-            self.request_keyboard()
-        else:
-            self.release_keyboard()
 
     def on_loading_state_change(self, isLoading, canGoBack, canGoForward):
         self.is_loading = isLoading
@@ -162,7 +148,7 @@ class CefBrowser(Widget):
         pass
 
     def on_certificate_error(self, err, url, cb):
-        print "on_certificate_error", err, url
+        print("on_certificate_error", err, url)
         cb.Continue(False)
 
     def on_load_start(self, frame):
@@ -176,7 +162,7 @@ class CefBrowser(Widget):
         pass
 
     def OnCertificateError(self, err, url, cb):
-        print "OnCertificateError", err, url, cb
+        print("OnCertificateError", err, url, cb)
         # Check if cert verification is disabled
         if os.path.isfile("/etc/rentouch/ssl-verification-disabled"):
             cb.Continue(True)
@@ -192,70 +178,26 @@ class CefBrowser(Widget):
         :param attributes: Attributes of HTML element
         """
         if shown:
-            # Check if keyboard should get displayed above
-            above = False
-            if 'class' in attributes:
-                if attributes['class'] in self.keyboard_above_classes:
-                    above = True
-
-            self.request_keyboard()
-            kb = self.__keyboard.widget
-            if len(rect) < 4:
-                kb.pos = ((Window.width-kb.width*kb.scale)/2, 10)
-            else:
-                x = self.x+rect[0]+(rect[2]-kb.width*kb.scale)/2
-                y = self.height+self.y-rect[1]-rect[3]-kb.height*kb.scale
-                if above:
-                    # If keyboard should displayed above the input field
-                    # Above is good on e.g. search boxes with results displayed
-                    # bellow the input field
-                    y = self.height+self.y-rect[1]
-                if y < 0:
-                    # If keyboard escapes viewport at bottom
-                    rightx = self.x+rect[0]+rect[2]
-                    spleft = self.x+rect[0]
-                    spright = Window.width-rightx
-                    y = 0
-                    if spleft <= spright:
-                        x = rightx
-                    else:
-                        x = spleft-kb.width*kb.scale
-                elif y+kb.height*kb.scale > Window.height:
-                    # If keyboard escapes viewport at top
-                    rightx = self.x+rect[0]+rect[2]
-                    spleft = self.x+rect[0]
-                    spright = Window.width-rightx
-                    y = Window.height-kb.height*kb.scale
-                    if spleft <= spright:
-                        x = rightx
-                    else:
-                        x = spleft-kb.width*kb.scale
-                else:
-                    if x < 0:
-                        x = 0
-                    elif Window.width < x+kb.width*kb.scale:
-                        x = Window.width-kb.width*kb.scale
-                kb.pos = (x, y)
+            self.request_keyboard(rect)
         else:
             self.release_keyboard()
 
-    def request_keyboard(self):
-        print("REQUEST KB")
+    def request_keyboard(self, rect=None):
+        print("REQUEST KB", rect)
         if not self.__keyboard:
-            self.__keyboard = EventLoop.window.request_keyboard(
+            self.__keyboard = Window.request_keyboard(
                     self.release_keyboard, self)
             self.__keyboard.bind(on_key_down=self.on_key_down)
             self.__keyboard.bind(on_key_up=self.on_key_up)
+        kw = self.__keyboard.widget
+        if rect and len(rect)==4:
+            kw.pos = (self.x+rect[0]+(rect[2]-kw.width)/2, self.y+self.height-rect[1]-rect[3]-kw.height)
+        else:
+            kw.pos = (self.x, self.y)
         CefKeyboardManager.reset_all_modifiers()
-        # Not sure if it is still required to send the focus
-        # (some earlier bug), but it shouldn't hurt to call it.
-        self.browser.SendFocusEvent(True)
 
     def release_keyboard(self, *kwargs):
         print("RELEASE KB")
-        # When using local keyboard mode, do all the request
-        # and releases of the keyboard through js bindings,
-        # otherwise some focus problems arise.
         CefKeyboardManager.reset_all_modifiers()
         if not self.__keyboard:
             return
@@ -263,7 +205,6 @@ class CefBrowser(Widget):
         self.__keyboard.unbind(on_key_up=self.on_key_up)
         self.__keyboard.release()
         self.__keyboard = None
-        self.browser.SendFocusEvent(False)
 
     def on_key_down(self, *largs):
         print("KEY DOWN", largs)
@@ -291,12 +232,6 @@ class CefBrowser(Widget):
     def on_touch_down(self, touch, *kwargs):
         if not self.collide_point(*touch.pos):
             return
-        if self.keyboard_mode == "global":
-            self.request_keyboard()
-        else:
-            Window.release_all_keyboards()
-            self.browser.GetFocusedFrame().ExecuteJavascript("__kivy__keyboard_requested = false;")
-
         touch.grab(self)
         y = self.height-touch.pos[1] + self.pos[1]
         x = touch.x - self.pos[0]
@@ -385,16 +320,8 @@ class ClientHandler():
     def OnLoadingStateChange(self, browser, isLoading, canGoBack, canGoForward):
         bw = self.browser_widgets[browser]
         bw.dispatch("on_loading_state_change", isLoading, canGoBack, canGoForward)
-        """ TODO: Delete?
-        if bw.__reset_js_bindings and not isLoading:
-            if bw:
-                bw.set_js_bindings()
-        """
         if not isLoading and bw:
             bw.bind_js()
-        if isLoading and bw and bw.keyboard_mode == "local":
-            # Release keyboard when navigating to a new page.
-            bw.release_keyboard()
 
     def OnAddressChange(self, browser, frame, url):
         self.browser_widgets[browser].dispatch("on_address_change", frame, url)
@@ -437,7 +364,7 @@ class ClientHandler():
     # LifeSpanHandler
 
     def OnBeforePopup(self, browser, frame, targetUrl, targetFrameName, popupFeatures, windowInfo, client, browserSettings, *largs):
-        print "On Before Popup", targetUrl
+        print("On Before Popup", targetUrl)
         wi = cefpython.WindowInfo()
         wi.SetAsChild(0)
         wi.SetAsOffscreen(0)
@@ -446,84 +373,131 @@ class ClientHandler():
         return False
 
     def RunModal(self, browser, *largs):
-        print "Run Modal"
+        print("Run Modal")
         return False
 
     def DoClose(self, browser, *largs):
-        print "Do Close", browser
+        print("Do Close", browser)
         bw = self.browser_widgets[browser]
+        bw.release_keyboard()
         bw.parent.remove_widget(bw)
         del bw
         return False
 
     def OnBeforeClose(self, browser, *largs):
-        print "On Before Close"
+        print("On Before Close")
 
     # LoadHandler
 
     def OnLoadStart(self, browser, frame):
         bw = self.browser_widgets[browser]
         bw.dispatch("on_load_start", frame)
-        if bw and bw.keyboard_mode == "local":
-            lrectconstruct = "var rect = e.target.getBoundingClientRect();var lrect = [rect.left, rect.top, rect.width, rect.height];"
-            if frame.GetParent():
-                lrectconstruct = "var lrect = [];"
+        if bw:
+            bw.browser.SendFocusEvent(True)
+            lrectconstruct = ""
+            if not frame.GetParent():
+                lrectconstruct = """try {
+    var rect = elem.getBoundingClientRect();
+    var lrect = [rect.left, rect.top, rect.width, rect.height];
+} catch (err) {}"""
             jsCode = """
 window.print = function () {
     console.log("Print dialog blocked");
 };
-function isKeyboardElement(elem) {
-    var tag = elem.tagName.toUpperCase();
-    if (tag=="INPUT") return (["TEXT", "PASSWORD", "DATE", "DATETIME", "DATETIME-LOCAL", "EMAIL", "MONTH", "NUMBER", "SEARCH", "TEL", "TIME", "URL", "WEEK"].indexOf(elem.type.toUpperCase())!=-1);
-    else if (tag=="TEXTAREA") return true;
-    else {
-        var tmp = elem;
-        while (tmp && tmp.contentEditable=="inherit") {
-            tmp = tmp.parentElement;
+
+var __kivy__activeKeyboardElement = false;
+var __kivy__updateRectTimer = false;
+var __kivy__lastRect = [];
+
+function __kivy__isKeyboardElement(elem) {
+    try {
+        var tag = elem.tagName.toUpperCase();
+        if (tag=="INPUT") return (["TEXT", "PASSWORD", "DATE", "DATETIME", "DATETIME-LOCAL", "EMAIL", "MONTH", "NUMBER", "SEARCH", "TEL", "TIME", "URL", "WEEK"].indexOf(elem.type.toUpperCase())!=-1);
+        else if (tag=="TEXTAREA") return true;
+        else {
+            var tmp = elem;
+            while (tmp && tmp.contentEditable=="inherit") {
+                tmp = tmp.parentElement;
+            }
+            if (tmp && tmp.contentEditable) return true;
         }
-        if (tmp && tmp.contentEditable) return true;
-    }
+    } catch (err) {}
     return false;
 }
 
-function getAttributes(elem){
-    var attributes = {}
-    for (var att, i = 0, atts = elem.attributes, n = atts.length; i < n; i++){
+function __kivy__getAttributes(elem) {
+    var attributes = {};
+    for (var att, i = 0, atts = elem.attributes, n = atts.length; i < n; i++) {
         att = atts[i];
-        attributes[att.nodeName] = att.nodeValue
+        attributes[att.nodeName] = att.nodeValue;
     }
-    return attributes
+    return attributes;
+}
+
+function __kivy__getRect(elem) {
+    var lrect = [];
+    """+lrectconstruct+"""
+    return lrect;
 }
 
 window.addEventListener("focus", function (e) {
-    """+lrectconstruct+"""
-    attributes = getAttributes(e.target)
-    if (isKeyboardElement(e.target)) __kivy__keyboard_update(true, lrect, attributes);
+    var lrect = __kivy__getRect(e.target);
+    var attributes = __kivy__getAttributes(e.target);
+    var ike = __kivy__isKeyboardElement(e.target);
+    console.log("focus "+e.target.toString()+JSON.stringify(attributes)+JSON.stringify(ike));
+    __kivy__keyboard_update(ike, lrect, attributes);
+    __kivy__activeKeyboardElement = (ike?e.target:false);
+    __kivy__lastRect = lrect;
 }, true);
 
 window.addEventListener("blur", function (e) {
-    """+lrectconstruct+"""
-    attributes = getAttributes(e.target)
+    var lrect = __kivy__getRect(e.target);
+    var attributes = __kivy__getAttributes(e.target);
+    console.log("blur "+e.target.toString()+JSON.stringify(attributes));
     __kivy__keyboard_update(false, lrect, attributes);
+    __kivy__activeKeyboardElement = false;
+    __kivy__lastRect = [];
+}, true);
+
+function __kivy__updateRect() {
+    if (__kivy__updateRectTimer) window.clearTimeout(__kivy__updateRectTimer);
+    if (__kivy__activeKeyboardElement) {
+        var lrect = __kivy__getRect(__kivy__activeKeyboardElement);
+        if (!(__kivy__lastRect && lrect.length==4 && __kivy__lastRect.length==4 && lrect[0]==__kivy__lastRect[0] && lrect[1]==__kivy__lastRect[1] && lrect[2]==__kivy__lastRect[2] && lrect[3]==__kivy__lastRect[3])) {
+            __kivy__keyboard_update(true, lrect, false);
+            __kivy__lastRect = lrect;
+        }
+    }
+    __kivy__updateRectTimer = window.setTimeout(__kivy__updateRect, 1000);
+}
+window.addEventListener("scroll", function (e) {
+    if (__kivy__updateRectTimer) window.clearTimeout(__kivy__updateRectTimer);
+    __kivy__updateRectTimer = window.setTimeout(__kivy__updateRect, 25);
 }, true);
 
 function __kivy__on_escape() {
-    if (document.activeElement) {
-        document.activeElement.blur();
-    }
+    if (__kivy__activeKeyboardElement) __kivy__activeKeyboardElement.blur();
+    if (document.activeElement) document.activeElement.blur();
 }
+var ae = document.activeElement;
+if (ae) {
+    ae.blur();
+    ae.focus();
+}
+__kivy__updateRectTimer = window.setTimeout(__kivy__updateRect, 1000);
 """
             frame.ExecuteJavascript(jsCode)
 
     def OnLoadEnd(self, browser, frame, httpStatusCode):
-        self.browser_widgets[browser].dispatch("on_load_end", frame, httpStatusCode)
-        #largs[0].SetZoomLevel(2.0) # this works at this point
+        bw = self.browser_widgets[browser]
+        bw.dispatch("on_load_end", frame, httpStatusCode)
+        #browser.SetZoomLevel(2.0) # this works at this point
 
     def OnLoadError(self, browser, frame, errorCode, errorText, failedUrl):
         self.browser_widgets[browser].dispatch("on_load_error", frame, errorCode, errorText, failedUrl)
 
     def OnRendererProcessTerminated(self, *largs):
-        pass
+        print("OnRendererProcessTerminated", largs)
 
     # RenderHandler
 
@@ -556,7 +530,7 @@ function __kivy__on_escape() {
         bw.popup.size = (rect[2], rect[3])
 
     def OnPaint(self, browser, paintElementType, dirtyRects, buf, width, height):
-        #print "ON PAINT", browser
+        #print("ON PAINT", browser)
         b = buf.GetString(mode="bgra", origin="top-left")
         bw = self.browser_widgets[browser]
         if paintElementType != cefpython.PET_VIEW:
@@ -579,8 +553,8 @@ function __kivy__on_escape() {
 
     # RequestHandler
 
-    def OnBeforeBrowse(self, *largs):
-        pass
+    def OnBeforeBrowse(self, browser, frame, request, isRedirect):
+        frame.ExecuteJavascript("__kivy__on_escape()")
 
     def OnBeforeResourceLoad(self, *largs):
         pass
@@ -613,7 +587,7 @@ function __kivy__on_escape() {
 client_handler = ClientHandler()
 
 def OnAfterCreated(browser, *largs):
-    print "On After Created", browser, largs
+    print("On After Created", browser, largs)
     pw = None
     for key in client_handler.browser_widgets:
         print("ONAFTERCREATED", key)
@@ -631,24 +605,24 @@ if __name__ == '__main__':
     import os
     from kivy.app import App
     from kivy.clock import Clock
-    #from kivy.uix.behaviors import FocusBehavior
+    from kivy.uix.behaviors import FocusBehavior
     from kivy.uix.button import Button
     from kivy.uix.textinput import TextInput
     class CefBrowserApp(App):
         def timeout(self, *largs):
             cef_test_url = "file://"+os.path.join(os.path.dirname(os.path.realpath(__file__)), "test.html")
             self.cb1.url = cef_test_url
-            #self.cb1.keyboard_mode = "global"
         def build(self):
-            class FocusButton(Button): # FocusBehavior, 
+            class FocusButton(FocusBehavior, Button):
                 pass
-
-            ti1 = TextInput(text="ti1", pos=(0,700), size=(511, 50))
-            ti2 = TextInput(text="ti2", pos=(513,700), size=(511, 50))
-            fb1 = FocusButton(text="ti1", pos=(0,650), size=(511, 50))
-            fb2 = FocusButton(text="ti2", pos=(513,650), size=(511, 50))
-            self.cb1 = CefBrowser(url='http://jegger.ch/datapool/app/test_popup.html', pos=(0,0), size=(511, 650))
-            self.cb2 = CefBrowser(url='http://jegger.ch/datapool/app/test_popup.html', keyboard_above_classes=["select2-input", ], pos=(513,0), size=(511, 650))
+            wid = Window.width/2
+            hei = Window.height
+            ti1 = TextInput(text="ti1", pos=(0,hei-50), size=(wid-1, 50))
+            ti2 = TextInput(text="ti2", pos=(wid+1,hei-50), size=(wid-1, 50))
+            fb1 = FocusButton(text="ti1", pos=(0,hei-100), size=(wid-1, 50))
+            fb2 = FocusButton(text="ti2", pos=(wid+1,hei-100), size=(wid-1, 50))
+            self.cb1 = CefBrowser(url='http://jegger.ch/datapool/app/test_popup.html', pos=(0,0), size=(wid-1, hei-100))
+            self.cb2 = CefBrowser(url='http://jegger.ch/datapool/app/test_popup.html', pos=(wid+1,0), size=(wid-1, hei-100))
             # http://jegger.ch/datapool/app/test_popup.html
             # http://jegger.ch/datapool/app/test_events.html
             # https://rally1.rallydev.com/
