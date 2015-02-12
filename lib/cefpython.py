@@ -218,7 +218,8 @@ settings = {
     "release_dcheck_enabled": True, # Enable only when debugging.
     "locales_dir_path": join(md, "locales"),
     "resources_dir_path": md,
-    "browser_subprocess_path": join(md, SUBPROCESS)
+    "browser_subprocess_path": join(md, SUBPROCESS),
+    "unique_request_context_per_browser":True, 
 }
 try:
     cefpython.Initialize(settings)

@@ -31,7 +31,7 @@ class CefControlledBrowser(Widget):
         if initBrowser:
             initUrl = initBrowser.url
         else:
-            initBrowser = self.get_cef_browser(initUrl)
+            initBrowser = CefBrowser(url=initUrl)
         self.back_button = self.get_back_button()
         self.add_widget(self.back_button)
         self.forward_button = self.get_forward_button()
@@ -42,6 +42,7 @@ class CefControlledBrowser(Widget):
         self.add_widget(self.url_input)
         self.cef_browser = initBrowser
         self.add_widget(self.cef_browser)
+        self.configure_cef_browser(initBrowser)
         self.bind(pos=self.realign)
         self.bind(size=self.realign)
         self.bind(navigation_bar_hei=self.set_navigation_bar_hei)
@@ -80,11 +81,11 @@ class CefControlledBrowser(Widget):
         ui.go.bind(on_press=self.change_url)
         self.add_widget(ui.go)
         return ui
-    def get_cef_browser(self, initUrl):
-        cb = CefBrowser(url=initUrl)
-        def on_address_change(cb, frame, url):
+    def configure_cef_browser(self, cb):
+        def on_url(cb, url):
             self.url_input.text = url
-        cb.bind(on_address_change=on_address_change)
+        cb.bind(url=on_url)
+        self.url_input.text = cb.url
         def on_load_start(cb, frame):
             self.stop_reload_button.text = "x"
         cb.bind(on_load_start=on_load_start)
