@@ -2,4 +2,4 @@
 *~
 .idea
 *debug.log
-lib/cefpython/*
+cefbrowser/lib/cefpython/*
