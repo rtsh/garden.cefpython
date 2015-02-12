@@ -33,6 +33,10 @@ cef_browser_js_confirm = Factory.CefBrowserJSConfirm()
 cef_browser_js_prompt = Factory.CefBrowserJSPrompt()
 
 class CefBrowser(Widget):
+    # Class Variables
+    certificate_error_handler = None
+    
+    # Instance Variables
     url = StringProperty("about:blank")
     is_loading = BooleanProperty(False)
     can_go_back = BooleanProperty(False)
@@ -239,6 +243,14 @@ class CefBrowser(Widget):
     @classmethod
     def do_nothing(cls, browser):
         pass
+
+    @classmethod
+    def allow_invalid_certificates(cls, err, url):
+        return True
+
+    @classmethod
+    def block_invalid_certificates(cls, err, url):
+        return False
 
     def on_key_down(self, *largs):
         print("KEY DOWN", largs)
@@ -688,12 +700,15 @@ def OnAfterCreated(browser):
             Window.add_widget(cb)
 cefpython.SetGlobalClientCallback("OnAfterCreated", OnAfterCreated)
 
-def OnCertificateError(self, err, url, cb):
+def OnCertificateError(err, url, cb):
     print("OnCertificateError", err, url, cb)
-    # Check if cert verification is disabled
-    if os.path.isfile("/etc/rentouch/ssl-verification-disabled"):
-        cb.Continue(True)
-    #.dispatch("on_certificate_error", err, url, cb)
+    if CefBrowser.certificate_error_handler:
+        try:
+            res = CefBrowser.certificate_error_handler(err, url)
+            if res:
+                cb.Continue(True)
+        except:
+            pass
 cefpython.SetGlobalClientCallback("OnCertificateError", OnCertificateError)
 
 if __name__ == '__main__':
@@ -743,7 +758,7 @@ if __name__ == '__main__':
             self.cb1.close_handler = close_handler
             self.cb1.bind(url=url_handler)
             self.cb1.bind(title=title_handler)
-            self.cb2 = CefBrowser(url=cef_test_url, pos=(wid+1,0), size=(wid-1, hei-100))
+            self.cb2 = CefBrowser(url="https://yoga-und-entspannung.ch/", pos=(wid+1,0), size=(wid-1, hei-100))
             self.cb2.popup_policy = popup_policy_handler
             self.cb2.popup_handler = popup_handler
             self.cb2.close_handler = close_handler
