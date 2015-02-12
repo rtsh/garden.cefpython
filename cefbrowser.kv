@@ -1,0 +1,100 @@
+# -----------------------------------------------------------------------------
+# JS Dialogs
+# -----------------------------------------------------------------------------
+<CefBrowserJSAlert@ModalView>:
+    size_hint: None, None
+    size: 400, 150
+    text: ""
+    default_prompt_text: ""
+    js_continue: None
+    auto_dismiss: False
+    BoxLayout:
+        spacing: 5
+        padding: 5
+        orientation: "vertical"
+        Label:
+            padding: 5, 5
+            text: root.text
+            text_size: self.size
+            valign: 'middle'
+            halign: 'center'
+        BoxLayout:
+            size_hint_y: None
+            height: 50
+            spacing: 10
+            padding: 5
+            Widget:
+            Button:
+                text: "OK"
+                on_press:
+                    root.js_continue(True, "")
+                    root.dismiss()
+
+<CefBrowserJSConfirm@ModalView>:
+    size_hint: None, None
+    size: 400, 150
+    text: ""
+    default_prompt_text: ""
+    js_continue: None
+    auto_dismiss: False
+    BoxLayout:
+        spacing: 5
+        padding: 5
+        orientation: "vertical"
+        Label:
+            padding: 5, 5
+            text: root.text
+            text_size: self.size
+            valign: 'middle'
+            halign: 'center'
+        BoxLayout:
+            size_hint_y: None
+            height: 50
+            spacing: 10
+            padding: 5
+            Button:
+                text: "Cancel"
+                on_press:
+                    root.js_continue(False, "")
+                    root.dismiss()
+            Button:
+                text: "OK"
+                on_press:
+                    root.js_continue(True, "")
+                    root.dismiss()
+
+<CefBrowserJSPrompt@ModalView>:
+    size_hint: None, None
+    size: 400, 150
+    text: ""
+    default_prompt_text: ""
+    js_continue: None
+    auto_dismiss: False
+    BoxLayout:
+        spacing: 5
+        padding: 5
+        orientation: "vertical"
+        Label:
+            padding: 5, 5
+            text: root.text
+            text_size: self.size
+            valign: 'middle'
+            halign: 'center'
+        TextInput:
+            id: text_input
+            text: root.default_prompt_text
+        BoxLayout:
+            size_hint_y: None
+            height: 50
+            spacing: 10
+            padding: 5
+            Button:
+                text: "Cancel"
+                on_press:
+                    root.js_continue(False, text_input.text)
+                    root.dismiss()
+            Button:
+                text: "OK"
+                on_press:
+                    root.js_continue(True, text_input.text)
+                    root.dismiss()

@@ -45,12 +45,16 @@ class CefBrowser(Widget):
     _browser = None
     _popup = None
     _texture = None
+    __keyboard = None
     __rect = None
     __js_bindings = None  # See _bind_js()
 
-    def __init__ (self, *largs, **dargs):
+    def __init__(self, *largs, **dargs):
         self.url = dargs.pop("url", "about:blank")
-        self.keyboard_position = self.keyboard_position_optimal
+        self.popup_policy = dargs.pop("popup_policy", CefBrowser.always_block_popups)
+        self.popup_handler = dargs.pop("popup_handler", CefBrowser.fullscreen_popup)
+        self.close_handler = dargs.pop("close_handler", CefBrowser.do_nothing)
+        self.keyboard_position = dargs.pop("keyboard_position", CefBrowser.keyboard_position_optimal)
         self._browser = dargs.pop("browser", None)
         self._popup = CefBrowserPopup(self)
         self.__rect = None
@@ -169,8 +173,6 @@ class CefBrowser(Widget):
         print("on_load_error=> Code: %s, errorText: %s, failedURL: %s" % (errorCode, errorText, failedUrl))
         pass
 
-    __keyboard = None
-
     def _keyboard_update(self, shown, rect, attributes):
         """
         :param shown: Show keyboard if true, hide if false (blur)
@@ -203,14 +205,16 @@ class CefBrowser(Widget):
         self.__keyboard.release()
         self.__keyboard = None
 
-    def keyboard_position_simple(self, browser, kw, rect, attributes):
+    @classmethod
+    def keyboard_position_simple(cls, browser, kw, rect, attributes):
         if rect and len(rect)==4:
             kw.pos = (browser.x+rect[0]+(rect[2]-kw.width)/2, browser.y+browser.height-rect[1]-rect[3]-kw.height)
         else:
             kw.pos = (browser.x, browser.y)
 
-    def keyboard_position_optimal(self, browser, kw, rect, attributes): # TODO: place right, left, etc. see cefkivy
-        self.keyboard_position_simple(browser, kw, rect, attributes)
+    @classmethod
+    def keyboard_position_optimal(cls, browser, kw, rect, attributes): # TODO: place right, left, etc. see cefkivy
+        cls.keyboard_position_simple(browser, kw, rect, attributes)
         if Window.width<kw.x+kw.width:
             kw.x = Window.width-kw.width
         if kw.x<0:
@@ -219,6 +223,22 @@ class CefBrowser(Widget):
             kw.y = Window.height-kw.height
         if kw.y<0:
             kw.y = 0
+
+    @classmethod
+    def always_allow_popups(cls, browser, url):
+        return True
+
+    @classmethod
+    def always_block_popups(cls, browser, url):
+        return True
+
+    @classmethod
+    def fullscreen_popup(cls, browser, popup_browser):
+        Window.add_widget(popup_browser)
+
+    @classmethod
+    def do_nothing(cls, browser):
+        pass
 
     def on_key_down(self, *largs):
         print("KEY DOWN", largs)
