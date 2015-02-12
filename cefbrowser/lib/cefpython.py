@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
 '''
 This library providers functions to automatically download the precompiled
 .so/.dll files from the cefpython repository.
