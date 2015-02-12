@@ -707,6 +707,7 @@ def OnCertificateError(err, url, cb):
             res = CefBrowser.certificate_error_handler(err, url)
             if res:
                 cb.Continue(True)
+                return
         except:
             pass
 cefpython.SetGlobalClientCallback("OnCertificateError", OnCertificateError)

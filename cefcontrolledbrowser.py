@@ -50,22 +50,22 @@ class CefControlledBrowser(Widget):
     def get_back_button(self):
         bb = Button(text="<")
         def go_back(*largs):
-            self.cef_browser.browser.GoBack()
+            self.cef_browser._browser.GoBack()
         bb.bind(on_press=go_back)
         return bb
     def get_forward_button(self):
         fb = Button(text=">")
         def go_forward(*largs):
-            self.cef_browser.browser.GoForward()
+            self.cef_browser._browser.GoForward()
         fb.bind(on_press=go_forward)
         return fb
     def get_stop_reload_button(self):
         srb = Button(text="x")
         def stop_reload(*largs):
             if self.stop_reload_button.text=="r":
-                self.cef_browser.browser.Reload()
+                self.cef_browser._browser.Reload()
             else:
-                self.cef_browser.browser.StopLoad()
+                self.cef_browser._browser.StopLoad()
         srb.bind(on_press=stop_reload)
         return srb
     def get_url_input(self, initUrl):
@@ -91,8 +91,8 @@ class CefControlledBrowser(Widget):
         cb.bind(on_load_start=on_load_start)
         def on_load_end(cb, frame, *largs):
             self.stop_reload_button.text = "r"
-            self.back_button.disabled = (not self.cef_browser.browser.CanGoBack())
-            self.forward_button.disabled = (not self.cef_browser.browser.CanGoForward())
+            self.back_button.disabled = (not self.cef_browser._browser.CanGoBack())
+            self.forward_button.disabled = (not self.cef_browser._browser.CanGoForward())
         cb.bind(on_load_end=on_load_end)
         cb.bind(on_load_error=on_load_end)
         return cb
