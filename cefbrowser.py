@@ -15,10 +15,13 @@ CefControlledBrowser with CefBrowser)
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 from kivy.graphics.texture import Texture
+from kivy.logger import Logger
 from kivy.properties import *
 from kivy.uix.widget import Widget
 from lib.cefpython import cefpython
 from cefkeyboard import CefKeyboardManager
+
+import random
 
 class CefBrowser(Widget):
     # Keyboard mode: "global" or "local".
@@ -26,8 +29,15 @@ class CefBrowser(Widget):
     # 2. Local mode forwards keys to CEF only when an editable
     #    control is focused (input type=text|password or textarea).
     url = StringProperty("about:blank")
+    is_loading = BooleanProperty(False)
+    can_go_back = BooleanProperty(False)
+    can_go_forward = BooleanProperty(False)
+    title = StringProperty("")
     browser = None
     popup = None
+    popup_policy = None
+    popup_handler = None
+    close_handler = None
     __rect = None
     __js_bindings = None  # See bind_js()
 
@@ -39,10 +49,6 @@ class CefBrowser(Widget):
         self.__js_bindings = None
         super(CefBrowser, self).__init__(**dargs)
 
-        self.register_event_type("on_loading_state_change")
-        self.register_event_type("on_address_change")
-        self.register_event_type("on_title_change")
-        self.register_event_type("on_before_popup")
         self.register_event_type("on_load_start")
         self.register_event_type("on_load_end")
         self.register_event_type("on_load_error")
@@ -60,8 +66,8 @@ class CefBrowser(Widget):
             windowInfo = cefpython.WindowInfo()
             windowInfo.SetAsOffscreen(0)
             self.browser = cefpython.CreateBrowserSync(windowInfo, {}, navigateUrl=self.url)
-            self.browser.SetClientHandler(client_handler)
 
+        self.browser.SetClientHandler(client_handler)
         client_handler.browser_widgets[self.browser] = self
         self.browser.WasResized()
         self.bind(size=self.realign)
@@ -69,14 +75,6 @@ class CefBrowser(Widget):
         self.bind_js()
 
     def bind_js(self):
-        # Needed to introduce bind_js again because the freeze of sites at load took over.
-        # As an example 'http://www.htmlbasix.com/popup.shtml' freezed every time. By setting the js
-        # bindings again, the freeze rate is at about 35%. Check git to see how it was done, before using
-        # this function ...
-        # I (jegger) have to be honest, that I don't have a clue why this is acting like it does!
-        # I hope simon (REN-840) can resolve this once in for all...
-        #
-        # ORIGINAL COMMENT:
         # When browser.Navigate() is called, some bug appears in CEF
         # that makes CefRenderProcessHandler::OnBrowserDestroyed()
         # is being called. This destroys the javascript bindings in
@@ -123,22 +121,9 @@ class CefBrowser(Widget):
             self.__rect.texture = self.texture
 
     def on_url(self, instance, value):
-        print("ON URL", instance, value, self.browser.GetUrl())
         if self.browser and value and value!=self.browser.GetUrl():
+            print("ON URL", instance, value, self.browser.GetUrl(), self.browser.GetMainFrame().GetUrl())
             self.browser.Navigate(self.url)
-
-    def on_loading_state_change(self, isLoading, canGoBack, canGoForward):
-        self.is_loading = isLoading
-
-    def on_address_change(self, frame, url):
-        self.url = url
-
-    def on_title_change(self, newTitle):
-        pass
-
-    def on_before_popup(self, browser, frame, targetUrl, targetFrameName,
-            popupFeatures, windowInfo, client, browserSettings, noJavascriptAccess):
-        pass
 
     def on_js_dialog(self, browser, origin_url, accept_lang, dialog_type, message_text, default_prompt_text, callback,
                      suppress_message):
@@ -160,14 +145,6 @@ class CefBrowser(Widget):
     def on_load_error(self, frame, errorCode, errorText, failedUrl):
         print("on_load_error=> Code: %s, errorText: %s, failedURL: %s" % (errorCode, errorText, failedUrl))
         pass
-
-    def OnCertificateError(self, err, url, cb):
-        print("OnCertificateError", err, url, cb)
-        # Check if cert verification is disabled
-        if os.path.isfile("/etc/rentouch/ssl-verification-disabled"):
-            cb.Continue(True)
-        else:
-            self.dispatch("on_certificate_error", err, url, cb)
 
     __keyboard = None
 
@@ -311,32 +288,39 @@ class CefBrowserPopup(Widget):
 
 class ClientHandler():
     browser_widgets = {}
+    pending_popups = {}
 
     def __init__(self, *largs):
         self.browser_widgets = {}
 
-    # DisplayHandler
+    # DisplayHandler TODO: OnContentsSizeChange, OnFaviconURLChange, OnNavStateChange
 
-    def OnLoadingStateChange(self, browser, isLoading, canGoBack, canGoForward):
+    def OnLoadingStateChange(self, browser, is_loading, can_go_back, can_go_forward):
         bw = self.browser_widgets[browser]
-        bw.dispatch("on_loading_state_change", isLoading, canGoBack, canGoForward)
-        if not isLoading and bw:
+        bw.is_loading = is_loading
+        bw.can_go_back = can_go_back
+        bw.can_go_forward = can_go_forward
+        if not is_loading:
             bw.bind_js()
 
     def OnAddressChange(self, browser, frame, url):
-        self.browser_widgets[browser].dispatch("on_address_change", frame, url)
+        if browser.GetMainFrame()==frame:
+            self.browser_widgets[browser].url = url
+        else:
+            print("TODO: Address changed in Frame")
 
-    def OnTitleChange(self, browser, newTitle):
-        self.browser_widgets[browser].dispatch("on_title_change", newTitle)
+    def OnTitleChange(self, browser, new_title):
+        self.browser_widgets[browser].title = new_title
 
     def OnTooltip(self, *largs):
-        return True
+        return True # We handled it. And did do nothing about it. :O
 
-    def OnStatusMessage(self, *largs):
-        pass
+    def OnStatusMessage(self, browser, message):
+        Logger.info("CefBrowser: Status: %s", message)
 
-    def OnConsoleMessage(self, *largs):
-        pass
+    def OnConsoleMessage(self, browser, message, source, line):
+        Logger.info("CefBrowser: Console: %s - %s(%i)", message, source, line)
+        return True # We handled it
 
     # DownloadHandler
 
@@ -363,25 +347,48 @@ class ClientHandler():
 
     # LifeSpanHandler
 
-    def OnBeforePopup(self, browser, frame, targetUrl, targetFrameName, popupFeatures, windowInfo, client, browserSettings, *largs):
-        print("On Before Popup", targetUrl)
-        wi = cefpython.WindowInfo()
-        wi.SetAsChild(0)
-        wi.SetAsOffscreen(0)
-        windowInfo.append(wi)
-        browserSettings.append({})
-        return False
+    def OnBeforePopup(self, browser, frame, target_url, target_frame_name, popup_features, window_info, client, browser_settings, *largs):
+        Logger.debug("CefBrowser: OnBeforePopup\n\tBrowser: %s\n\tFrame: %s\n\tURL: %s\n\tFrame Name: %s\n\tPopup Features: %s\n\tWindow Info: %s\n\tClient: %s\n\tBrowser Settings: %s\n\tRemaining Args: %s", browser, frame, target_url, target_frame_name, popup_features, window_info, client, browser_settings, largs)
+        bw = self.browser_widgets[browser]
+        if hasattr(bw.popup_policy, '__call__'):
+            try:
+                allow_popup = bw.popup_policy(bw, target_url)
+                Logger.info("CefBrowser: Popup policy handler "+("allowed" if allow_popup else "blocked")+" popup")
+            except Exception as err:
+                Logger.warning("CefBrowser: Popup policy handler failed with error:", err)
+                allow_popup = False
+        else:
+            Logger.info("CefBrowser: No Popup policy handler detected. Default is block.")
+            allow_popup = False
+        if allow_popup:
+            r = random.randint(1, 2**31-1)
+            wi = cefpython.WindowInfo()
+            wi.SetAsChild(0)
+            wi.SetAsOffscreen(r)
+            window_info.append(wi)
+            browser_settings.append({})
+            self.pending_popups[r] = browser
+            return False
+        else:
+            return True
 
     def RunModal(self, browser, *largs):
-        print("Run Modal")
+        Logger.debug("CefBrowser: RunModal\n\tBrowser: %s\n\tRemaining Args: %s", browser, largs)
         return False
 
-    def DoClose(self, browser, *largs):
-        print("Do Close", browser)
+    def DoClose(self, browser):
         bw = self.browser_widgets[browser]
         bw.release_keyboard()
-        bw.parent.remove_widget(bw)
-        del bw
+        if hasattr(bw.close_handler, '__call__'):
+            try:
+                bw.close_handler(bw)
+            except Exception as err:
+                Logger.warning("CefBrowser: Close handler failed with error: %s", err)
+        try:
+            bw.parent.remove_widget(bw)
+        except:
+            pass
+        del self.browser_widgets[browser]
         return False
 
     def OnBeforeClose(self, browser, *largs):
@@ -494,7 +501,8 @@ __kivy__updateRectTimer = window.setTimeout(__kivy__updateRect, 1000);
         #browser.SetZoomLevel(2.0) # this works at this point
 
     def OnLoadError(self, browser, frame, errorCode, errorText, failedUrl):
-        self.browser_widgets[browser].dispatch("on_load_error", frame, errorCode, errorText, failedUrl)
+        bw = self.browser_widgets[browser]
+        bw.dispatch("on_load_error", frame, errorCode, errorText, failedUrl)
 
     def OnRendererProcessTerminated(self, *largs):
         print("OnRendererProcessTerminated", largs)
@@ -554,7 +562,7 @@ __kivy__updateRectTimer = window.setTimeout(__kivy__updateRect, 1000);
     # RequestHandler
 
     def OnBeforeBrowse(self, browser, frame, request, isRedirect):
-        frame.ExecuteJavascript("__kivy__on_escape()")
+        frame.ExecuteJavascript("try {__kivy__on_escape();} catch (err) {}")
 
     def OnBeforeResourceLoad(self, *largs):
         pass
@@ -586,20 +594,37 @@ __kivy__updateRectTimer = window.setTimeout(__kivy__updateRect, 1000);
 
 client_handler = ClientHandler()
 
-def OnAfterCreated(browser, *largs):
-    print("On After Created", browser, largs)
-    pw = None
-    for key in client_handler.browser_widgets:
-        print("ONAFTERCREATED", key)
-        pw = client_handler.browser_widgets[key].parent
-        if pw:
-            break
-    cb = CefBrowser(browser=browser)
-    cb.pos = (0, 150)
-    cb.size = (1024, 500)
-    pw.add_widget(cb)
+def OnAfterCreated(browser):
+    print("On After Created", browser, browser.IsPopup(), browser.GetIdentifier(), browser.GetWindowHandle(), browser.GetOpenerWindowHandle())
+    if browser.IsPopup():
+        wh = browser.GetWindowHandle()
+        cb = CefBrowser(browser=browser)
+        bw = False
+        if wh in client_handler.pending_popups:
+            parent_browser = client_handler.pending_popups[wh]
+            if parent_browser in client_handler.browser_widgets:
+                bw = client_handler.browser_widgets[parent_browser]
+        if not bw:
+            bw = client_handler.browser_widgets[client_handler.browser_widgets.iterkeys().next()]
+        if hasattr(bw.popup_handler, '__call__'):
+            try:
+                bw.popup_handler(bw, cb)
+            except Exception as err:
+                Logger.warning("CefBrowser: Popup handler failed with error: %s", err)
+        else:
+            Logger.info("CefBrowser: No Popup handler detected.")
+        if not cb.parent:
+            Logger.warning("CefBrowser: Popup handler did not add the popup_browser to the widget tree. Adding it to Window.")
+            Window.add_widget(cb)
 cefpython.SetGlobalClientCallback("OnAfterCreated", OnAfterCreated)
 
+def OnCertificateError(self, err, url, cb):
+    print("OnCertificateError", err, url, cb)
+    # Check if cert verification is disabled
+    if os.path.isfile("/etc/rentouch/ssl-verification-disabled"):
+        cb.Continue(True)
+    #.dispatch("on_certificate_error", err, url, cb)
+cefpython.SetGlobalClientCallback("OnCertificateError", OnCertificateError)
 
 if __name__ == '__main__':
     import os
@@ -621,8 +646,37 @@ if __name__ == '__main__':
             ti2 = TextInput(text="ti2", pos=(wid+1,hei-50), size=(wid-1, 50))
             fb1 = FocusButton(text="ti1", pos=(0,hei-100), size=(wid-1, 50))
             fb2 = FocusButton(text="ti2", pos=(wid+1,hei-100), size=(wid-1, 50))
+            def url_handler(self, url):
+                print("URL HANDLER", url)
+            def title_handler(self, title):
+                print("TITLE HANDLER", title)
+            def close_handler(self):
+                print("CLOSE HANDLER")
+            def popup_policy_handler(self, popup_url):
+                print("POPUP POLICY HANDLER", popup_url)
+                return True
+            def popup_handler(self, popup_browser):
+                print("POPUP HANDLER", popup_browser)
+                pw = None
+                for key in client_handler.browser_widgets:
+                    pw = client_handler.browser_widgets[key].parent
+                    if pw:
+                        break
+                popup_browser.pos = (Window.width/4, Window.height/4)
+                popup_browser.size = (Window.width/2, Window.height/2)
+                popup_browser.popup_handler = popup_handler
+                popup_browser.close_handler = close_handler
+                pw.add_widget(popup_browser)
             self.cb1 = CefBrowser(url='http://jegger.ch/datapool/app/test_popup.html', pos=(0,0), size=(wid-1, hei-100))
+            self.cb1.popup_policy = popup_policy_handler
+            self.cb1.popup_handler = popup_handler
+            self.cb1.close_handler = close_handler
+            self.cb1.bind(url=url_handler)
+            self.cb1.bind(title=title_handler)
             self.cb2 = CefBrowser(url='http://jegger.ch/datapool/app/test_popup.html', pos=(wid+1,0), size=(wid-1, hei-100))
+            self.cb2.popup_policy = popup_policy_handler
+            self.cb2.popup_handler = popup_handler
+            self.cb2.close_handler = close_handler
             # http://jegger.ch/datapool/app/test_popup.html
             # http://jegger.ch/datapool/app/test_events.html
             # https://rally1.rallydev.com/

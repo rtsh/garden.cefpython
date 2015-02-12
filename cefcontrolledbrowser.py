@@ -26,7 +26,12 @@ class CefControlledBrowser(Widget):
     
     def __init__ (self, *largs, **dargs):
         super(CefControlledBrowser, self).__init__()
+        initBrowser = dargs.get("browser", False)
         initUrl = dargs.get("url", "http://www.google.com")
+        if initBrowser:
+            initUrl = initBrowser.url
+        else:
+            initBrowser = self.get_cef_browser(initUrl)
         self.back_button = self.get_back_button()
         self.add_widget(self.back_button)
         self.forward_button = self.get_forward_button()
@@ -35,7 +40,7 @@ class CefControlledBrowser(Widget):
         self.add_widget(self.stop_reload_button)
         self.url_input = self.get_url_input(initUrl)
         self.add_widget(self.url_input)
-        self.cef_browser = self.get_cef_browser(initUrl)
+        self.cef_browser = initBrowser
         self.add_widget(self.cef_browser)
         self.bind(pos=self.realign)
         self.bind(size=self.realign)
@@ -137,7 +142,7 @@ if __name__ == '__main__':
     class CefApp(App):
         def timeout(self, *largs):
             self.cb.navigation_bar_hei = 26
-            self.cb.cef_browser.url = test_url
+            self.cb.cef_browser.url = "http://jegger.ch/datapool/app/test_popup.html"
         def build(self):
             self.cb = CefControlledBrowser(url="http://kivy.org")
             Clock.schedule_once(self.timeout, 3)

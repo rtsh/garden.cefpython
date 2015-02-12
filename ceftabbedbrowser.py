@@ -40,27 +40,33 @@ class CefTabbedBrowser(Widget):
         self.tab_bar = self.get_tab_bar()
         self.add_widget(self.tab_bar)
         for i in range(len(initUrls)):
-            self.new_tab(initUrls[i])
+            self.new_tab(url=initUrls[i])
         self.realign()
         self.bind(pos=self.realign)
         self.bind(size=self.realign)
         self.bind(selected_tab=self.set_selected_tab)
         self.bind(tab_bar_height=self.realign)
 
-    def get_browser(self):
-        cb = CefControlledBrowser(url=self.tabs[self.selected_tab]["url"])
+    def get_browser(self, **dargs):
+        cb = CefControlledBrowser(**dargs)
         def titlechangetab(index, obj, newTitle):
             self.tabs[index]["button"].label.text = newTitle
             return True
         fn = functools.partial(titlechangetab, self.selected_tab)
         cb.cef_browser.bind(on_title_change=fn)
-        def popupnewtab(obj, frame, url):
-            self.new_tab(url)
-            def gotonewtab(*largs):
-                self.selected_tab = len(self.tabs)-1
-            Clock.schedule_once(gotonewtab, 0)
+        def popup_always(obj, url):
             return True
-        cb.cef_browser.bind(on_before_popup=popupnewtab)
+        def popup_new_tab(obj, browser):
+            self.new_tab(browser=browser)
+            self.selected_tab = len(self.tabs)-1
+        def close_tab(cb, obj):
+            for t in self.tabs:
+                if t["browser"]==cb:
+                    self.close_tab(t["button"])
+        fn = functools.partial(close_tab, cb)
+        cb.cef_browser.popup_policy = popup_always
+        cb.cef_browser.popup_handler = popup_new_tab
+        cb.cef_browser.close_handler = fn
         return cb
 
     def get_tab_bar(self):
@@ -127,10 +133,11 @@ class CefTabbedBrowser(Widget):
     def set_selected_tab(self, *largs):
         self.tabs[self.__displayed_tab]["button"].background_color = (1, 1, 1, 1)
         if self.__displayed_browser:
+            self.__displayed_browser.cef_browser.release_keyboard()
             self.remove_widget(self.__displayed_browser)
         self.tabs[self.selected_tab]["button"].background_color = (0.5, 0.5, 0.5, 1)
-        if not "browser" in self.tabs[self.selected_tab]:
-            self.tabs[self.selected_tab]["browser"] = self.get_browser()
+        if not self.tabs[self.selected_tab]["browser"]:
+            self.tabs[self.selected_tab]["browser"] = self.get_browser(url=self.tabs[self.selected_tab]["url"])
         cb = self.tabs[self.selected_tab]["browser"]
         cb.pos = self.pos
         cb.size = (self.size[0], self.size[1]-self.tab_bar_height)
@@ -138,13 +145,21 @@ class CefTabbedBrowser(Widget):
         self.__displayed_browser = cb
         self.__displayed_tab = self.selected_tab
 
-    def new_tab(self, url, *largs, **dargs):
+    def new_tab(self, *largs, **dargs):
+        i = dargs.get("index", len(self.tabs))
+        browser = dargs.get("browser", False)
+        url = "http://google.com"
+        if browser:
+            url = browser.url
+            browser = self.get_browser(browser=browser)
+        else:
+            url = dargs.get("url", url)
         i = dargs.get("index", len(self.tabs))
         b = self.get_tab(url)
         b.bind(pos=self.realign_tab)
         b.bind(size=self.realign_tab)
         b.index = i
-        self.tabs.append({"url":url, "button":b})
+        self.tabs.append({"url":url, "browser":browser, "button":b})
         self.tab_bar.grid_layout.clear_widgets()
         for tab in self.tabs:
             b = tab["button"]
@@ -182,7 +197,7 @@ if __name__ == '__main__':
             
         def build(self):
             Clock.schedule_once(self.timeout, 5)
-            self.tb = CefTabbedBrowser(urls=[test_url, "http://kivy.org",
+            self.tb = CefTabbedBrowser(urls=["http://jegger.ch/datapool/app/test_popup.html", "http://kivy.org",
                 "https://github.com/kivy-garden/garden.cefpython", 
                 "http://code.google.com/p/cefpython/",
                 "http://code.google.com/p/chromiumembedded/"])
