@@ -207,7 +207,7 @@ try:
             cefpython.MessageLoopWork()
         except:
             print("EXCEPTION IN CEF LOOP")
-    Clock.schedule_interval(cef_loop, 0)
+    Clock.schedule_interval(cef_loop, 0.01)
 except:
     Logger.critical("CEFLoader: cefpython was not imported")
     raise Exception("cefpython was not imported")

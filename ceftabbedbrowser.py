@@ -47,14 +47,14 @@ class CefTabbedBrowser(Widget):
         self.bind(selected_tab=self.set_selected_tab)
         self.bind(tab_bar_height=self.realign)
 
-    def get_browser(self, tab_index=None, **dargs):
-        if tab_index==None:
-            tab_index = self.selected_tab
+    def get_browser(self, button=None, **dargs):
+        if button==None:
+            button = self.tabs[self.selected_tab]["button"]
         cb = CefControlledBrowser(**dargs)
-        def titlechangetab(tab_index, obj, newTitle):
-            self.tabs[tab_index]["button"].label.text = newTitle
+        def titlechangetab(but, obj, newTitle):
+            but.label.text = newTitle
             return True
-        fn = functools.partial(titlechangetab, tab_index)
+        fn = functools.partial(titlechangetab, button)
         cb.cef_browser.bind(title=fn)
         def popup_always(obj, url):
             return True
@@ -149,14 +149,16 @@ class CefTabbedBrowser(Widget):
 
     def new_tab(self, *largs, **dargs):
         i = dargs.get("index", len(self.tabs))
+        b = None
         browser = dargs.get("browser", False)
         url = "http://google.com"
         if browser:
             url = browser.url
-            browser = self.get_browser(browser=browser, tab_index=i)
+            b = self.get_tab(url)
+            browser = self.get_browser(browser=browser, button=b)
         else:
             url = dargs.get("url", url)
-        b = self.get_tab(url)
+            b = self.get_tab(url)
         b.bind(pos=self.realign_tab)
         b.bind(size=self.realign_tab)
         b.index = i
