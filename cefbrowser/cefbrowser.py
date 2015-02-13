@@ -482,12 +482,6 @@ class ClientHandler():
         bw.dispatch("on_load_start", frame)
         if bw:
             bw._browser.SendFocusEvent(True)
-            lrectconstruct = ""
-            if not frame.GetParent():
-                lrectconstruct = """try {
-    var rect = elem.getBoundingClientRect();
-    var lrect = [rect.left, rect.top, rect.width, rect.height];
-} catch (err) {}"""
             jsCode = """
 window.print = function () {
     console.log("Print dialog blocked");
@@ -523,8 +517,23 @@ function __kivy__getAttributes(elem) {
 }
 
 function __kivy__getRect(elem) {
-    var lrect = [];
-    """+lrectconstruct+"""
+    var w = window;
+    var lrect = [0,0,0,0];
+    while (elem && w) {
+        try {
+            var rect = elem.getBoundingClientRect();
+            console.log(rect.left+", "+rect.top+", "+rect.width+", "+rect.height);
+            lrect[0] += rect.left;
+            lrect[1] += rect.top;
+            if (lrect[2]==0) lrect[2] = rect.width;
+            if (lrect[3]==0) lrect[3] = rect.height;
+            elem = w.frameElement;
+            w = w.parent;
+        } catch (err) {
+            console.log(err.toString());
+            elem = false;
+        }
+    }
     return lrect;
 }
 
