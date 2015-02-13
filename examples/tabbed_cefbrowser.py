@@ -1,14 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
 '''
-The CefTabbedBrowser Widget displays a browser with tabs:
-- If you want only the browser window, use cefbrowser.CefBrowser
-- If you want a single browser with controls (like "back", "forward", url
-    input, etc.), use cefcontrolledbrowser.CefControlledBrowser
-- If you want a browser with tabs, user ceftabbedbrowser.CefTabbedBrowser
-
-You can subclass all those Widgets and modify some of their methods to make
-them look differently. e.g. you can make a tabbed browser which yet has no 
-controls on each tab (by overriding CefTabbedBrowser.get_browser and replacing
-CefControlledBrowser with CefBrowser)
+The CefTabbedBrowser Widget displays a browser with tabs.
 '''
 
 from kivy.app import App

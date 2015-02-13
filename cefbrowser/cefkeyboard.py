@@ -1,16 +1,18 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
 '''
 Cef Keyboard Manager.
 Cef Keyboard management is complex, so we outsourced it to this file for
 better readability.
 '''
 
-__all__ = ('CefKeyboardManager', 'FixedKeyboard')
+__all__ = ('CEFKeyboardManager')
 
 from kivy.core.window import Window
 from kivy.uix.vkeyboard import VKeyboard
 from lib.cefpython import cefpython
 
-class CefKeyboardManagerSingleton():
+class CEFKeyboardManagerSingleton():
     # Kivy does not provide modifiers in on_key_up, but these
     # must be sent to CEF as well.
     is_shift1 = False
@@ -161,4 +163,4 @@ class CefKeyboardManagerSingleton():
         return cef_keycode
 
 
-CefKeyboardManager = CefKeyboardManagerSingleton()
+CEFKeyboardManager = CEFKeyboardManagerSingleton()

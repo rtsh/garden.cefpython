@@ -1,16 +1,12 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
 '''
 The CEFBrowser Widget actually displays the browser. It displays ONLY the
-browser:
-- If you want only the browser window, use CEFBrowser.CEFBrowser
-- If you want a single browser with controls (like "back", "forward", url
-    input, etc.), use cefcontrolledbrowser.CefControlledBrowser
-- If you want a browser with tabs, use ceftabbedbrowser.CefTabbedBrowser
-
-You can subclass all those Widgets and modify some of their methods to make
-them look differently. e.g. you can make a tabbed browser which yet has no 
-controls on each tab (by overriding CefTabbedBrowser.get_browser and replacing
-CefControlledBrowser with CEFBrowser)
+browser. If you need controls or tabs, check out the `examples`
 '''
+
+__all__ = ('CEFBrowser')
+
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 from kivy.graphics.texture import Texture
@@ -20,7 +16,7 @@ from kivy.logger import Logger
 from kivy.properties import *
 from kivy.uix.widget import Widget
 from lib.cefpython import cefpython
-from cefkeyboard import CefKeyboardManager
+from cefkeyboard import CEFKeyboardManager
 
 import os
 import random
@@ -32,19 +28,68 @@ cef_browser_js_confirm = Factory.CEFBrowserJSConfirm()
 cef_browser_js_prompt = Factory.CEFBrowserJSPrompt()
 
 class CEFBrowser(Widget):
+    """Displays a Browser"""
     # Class Variables
     certificate_error_handler = None
+    """The value of the `certificate_error_handler` class variable is a
+    function that handles certificate errors.
+    It takes 2 arguments:
+    - `err`: The certificate error number that occurred
+    - `url`: The URL that was to be loaded
+    It should return a bool that indicates whether to ignore the error or not:
+    - True: Ignore warning - False: Abort loading
+    If `certificate_error_handler` is None or cannot be executed, the default is False."""
     
     # Instance Variables
     url = StringProperty("about:blank")
+    """The URL of the (main frame of the) browser."""
     is_loading = BooleanProperty(False)
+    """Whether the browser is loading content"""
     can_go_back = BooleanProperty(False)
+    """Whether the browser gan go back in history at this time"""
     can_go_forward = BooleanProperty(False)
+    """Whether the browser gan go forward in history at this time"""
     title = StringProperty("")
+    """The title of the currently displayed content (e.g. for tab/window title)"""
     popup_policy = None
+    """The value of the `popup_policy` variable is a function that handles
+    the policy whether to allow or block popups.
+    It takes 2 arguments:
+    - `browser`: The browser which wants to open the popup
+    - `url`: The URL of the (future) popup
+    It should return a bool that indicates whether to open the popup or not:
+    - True: Allow popup - False: Block popup
+    If `popup_policy` is None or cannot be executed, the default is False."""
     popup_handler = None
+    """The value of the `popup_handler` variable is a function that handles
+    newly created popups.
+    It takes 2 arguments:
+    - `browser`: The browser which opened the popup
+    - `popup_browser`: The (newly created) popup browser
+    It should place the `popup_browser` somewhere in the widget tree
+    If `popup_handler` is None, cannot be executed or doesn't insert
+    `popup_browser` to the widget tree, the default is to add it to the Window."""
     close_handler = None
+    """The value of the `close_handler` variable is a function that handles
+    closing browsers or popups.
+    It takes 1 argument:
+    - `browser`: The browser to be closed
+    It remove everything belonging to `browser` from the widget tree
+    If `close_handler` is None, cannot be executed or doesn't remove `browser`
+    from the widget tree, the default is to just remove the `browser` from its
+    parent."""
     keyboard_position = None
+    """The value of the `keyboard_position` variable is a function that handles
+    positioning of the keyboard on focusing a keyboard element in the browser.
+    It takes 1 argument:
+    - `browser`: The browser in which the element was focused
+    - `keyboard_widaget`: The keyboard widget
+    - `rect`: The rectangle the focused element takes *within* the browser
+    - `attributes`: The HTML attributes of the focused element
+    It should set `keyboard_widaget.pos` to the desired value
+    If `close_handler` is None, cannot be executed or doesn't remove `browser`
+    from the widget tree, the default is to just leave the keyboard widget
+    where it is."""
     _browser = None
     _popup = None
     _texture = None
@@ -67,7 +112,6 @@ class CEFBrowser(Widget):
         self.register_event_type("on_load_start")
         self.register_event_type("on_load_end")
         self.register_event_type("on_load_error")
-        self.register_event_type("on_certificate_error")
         self.register_event_type("on_js_dialog")
         self.register_event_type("on_before_unload_dialog")
 
@@ -162,10 +206,6 @@ class CEFBrowser(Widget):
     def on_before_unload_dialog(self, browser, message_text, is_reload, callback):
         pass
 
-    def on_certificate_error(self, err, url, cb):
-        print("on_certificate_error", err, url)
-        cb.Continue(False)
-
     def on_load_start(self, frame):
         pass
 
@@ -196,11 +236,11 @@ class CEFBrowser(Widget):
             self.__keyboard.bind(on_key_up=self.on_key_up)
         kw = self.__keyboard.widget
         self.keyboard_position(self, kw, rect, attributes)
-        CefKeyboardManager.reset_all_modifiers()
+        CEFKeyboardManager.reset_all_modifiers()
 
     def release_keyboard(self, *kwargs):
         print("RELEASE KB")
-        CefKeyboardManager.reset_all_modifiers()
+        CEFKeyboardManager.reset_all_modifiers()
         if not self.__keyboard:
             return
         self.__keyboard.unbind(on_key_down=self.on_key_down)
@@ -209,23 +249,23 @@ class CEFBrowser(Widget):
         self.__keyboard = None
 
     @classmethod
-    def keyboard_position_simple(cls, browser, kw, rect, attributes):
+    def keyboard_position_simple(cls, browser, keyboard_widaget, rect, attributes):
         if rect and len(rect)==4:
-            kw.pos = (browser.x+rect[0]+(rect[2]-kw.width)/2, browser.y+browser.height-rect[1]-rect[3]-kw.height)
+            keyboard_widaget.pos = (browser.x+rect[0]+(rect[2]-keyboard_widaget.width)/2, browser.y+browser.height-rect[1]-rect[3]-keyboard_widaget.height)
         else:
-            kw.pos = (browser.x, browser.y)
+            keyboard_widaget.pos = (browser.x, browser.y)
 
     @classmethod
-    def keyboard_position_optimal(cls, browser, kw, rect, attributes): # TODO: place right, left, etc. see cefkivy
-        cls.keyboard_position_simple(browser, kw, rect, attributes)
-        if Window.width<kw.x+kw.width:
-            kw.x = Window.width-kw.width
-        if kw.x<0:
-            kw.x = 0
-        if Window.height<kw.y+kw.height:
-            kw.y = Window.height-kw.height
-        if kw.y<0:
-            kw.y = 0
+    def keyboard_position_optimal(cls, browser, keyboard_widaget, rect, attributes): # TODO: place right, left, etc. see cefkivy
+        cls.keyboard_position_simple(browser, keyboard_widaget, rect, attributes)
+        if Window.width<keyboard_widaget.x+keyboard_widaget.width:
+            keyboard_widaget.x = Window.width-keyboard_widaget.width
+        if keyboard_widaget.x<0:
+            keyboard_widaget.x = 0
+        if Window.height<keyboard_widaget.y+keyboard_widaget.height:
+            keyboard_widaget.y = Window.height-keyboard_widaget.height
+        if keyboard_widaget.y<0:
+            keyboard_widaget.y = 0
 
     @classmethod
     def always_allow_popups(cls, browser, url):
@@ -253,11 +293,11 @@ class CEFBrowser(Widget):
 
     def on_key_down(self, *largs):
         print("KEY DOWN", largs)
-        CefKeyboardManager.kivy_on_key_down(self._browser, *largs)
+        CEFKeyboardManager.kivy_on_key_down(self._browser, *largs)
 
     def on_key_up(self, *largs):
         print("KEY UP", largs)
-        CefKeyboardManager.kivy_on_key_up(self._browser, *largs)
+        CEFKeyboardManager.kivy_on_key_up(self._browser, *largs)
 
     def on_touch_down(self, touch, *kwargs):
         if not self.collide_point(*touch.pos):
