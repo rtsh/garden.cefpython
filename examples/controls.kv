@@ -1,0 +1,51 @@
+#: import CEFBrowser kivy.garden.cefpython.CEFBrowser
+
+BoxLayout:
+    orientation: 'vertical'
+    BoxLayout:
+        size_hint_y: None
+        height: 50
+        Button:
+            id: back_button
+            text: "<"
+            size_hint_x: None
+            width: self.height
+            on_press:
+                browser._browser.GoBack()
+        Button:
+            id: forward_button
+            text: ">"
+            size_hint_x: None
+            width: self.height
+            on_press:
+                browser._browser.GoForward()
+        Button:
+            id: reload_button
+            text: "x"
+            size_hint_x: None
+            width: self.height
+            on_press:
+                browser._browser.StopLoad() if self.text=="x" else browser._browser.Reload()
+        TextInput:
+            id: url_input
+            input_type: "url"
+            multiline: False
+            on_text_validate:
+                browser.url = self.text
+
+    CEFBrowser:
+        id: browser
+        url: "http://www.rentouch.ch"
+        on_url:
+            url_input.text = args[1]
+        on_load_start:
+            reload_button.text = "x"
+        on_load_end:
+            reload_button.text = "r"
+            back_button.disabled = not self._browser.CanGoBack()
+            forward_button.disabled = not self._browser.CanGoForward()
+        on_load_error:
+            reload_button.text = "r"
+            back_button.disabled = not self._browser.CanGoBack()
+            forward_button.disabled = not self._browser.CanGoForward()
+
