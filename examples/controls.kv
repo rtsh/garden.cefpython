@@ -11,14 +11,14 @@ BoxLayout:
             size_hint_x: None
             width: self.height
             on_press:
-                browser._browser.GoBack()
+                browser.go_back()
         Button:
             id: forward_button
             text: ">"
             size_hint_x: None
             width: self.height
             on_press:
-                browser._browser.GoForward()
+                browser.go_forward()
         Button:
             id: reload_button
             text: "x"
