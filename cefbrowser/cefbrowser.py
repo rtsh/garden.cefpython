@@ -285,11 +285,19 @@ class CEFBrowser(Widget):
         pass
 
     @classmethod
-    def allow_invalid_certificates(cls, err, url):
+    def allow_invalid_certificates(cls, browser, err, url):
+        """
+        `browser` is a dummy argument, because python treats class variables
+        containing a function as unbound class methods
+        """
         return True
 
     @classmethod
-    def block_invalid_certificates(cls, err, url):
+    def block_invalid_certificates(cls, browser, err, url):
+        """
+        `browser` is a dummy argument, because python treats class variables
+        containing a function as unbound class methods
+        """
         return False
 
     def on_key_down(self, *largs):
@@ -814,12 +822,12 @@ def OnCertificateError(err, url, cb):
     print("OnCertificateError", err, url, cb)
     if CEFBrowser.certificate_error_handler:
         try:
-            res = CEFBrowser.certificate_error_handler(err, url)
+            res = CEFBrowser.certificate_error_handler(CEFBrowser(), err, url)
             if res:
                 cb.Continue(True)
                 return
-        except:
-            pass
+        except Exception as err:
+            Logger.warning("CEFBrowser: Error in certificate error handler.\n%s", err)
 cefpython.SetGlobalClientCallback("OnCertificateError", OnCertificateError)
 
 if __name__ == '__main__':
