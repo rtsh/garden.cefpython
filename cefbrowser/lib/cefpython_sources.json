@@ -6,6 +6,7 @@
             "cef.pak":"cefpython3-31.2-linux32-setup/cefpython3/cef.pak",
             "cefpython_py27.so":"cefpython3-31.2-linux32-setup/cefpython3/cefpython_py27.so",
             "libcef.so":"cefpython3-31.2-linux32-setup/cefpython3/libcef.so",
+            "libffmpegsumo.so":"cefpython3-31.2-linux32-setup/cefpython3/libffmpegsumo.so",
             "locales":"cefpython3-31.2-linux32-setup/cefpython3/locales",
             "subprocess":"cefpython3-31.2-linux32-setup/cefpython3/subprocess"
         }
@@ -17,6 +18,7 @@
             "cef.pak":"cefpython3-31.2-linux64-setup/cefpython3/cef.pak",
             "cefpython_py27.so":"cefpython3-31.2-linux64-setup/cefpython3/cefpython_py27.so",
             "libcef.so":"cefpython3-31.2-linux64-setup/cefpython3/libcef.so",
+            "libffmpegsumo.so":"cefpython3-31.2-linux64-setup/cefpython3/libffmpegsumo.so",
             "locales":"cefpython3-31.2-linux64-setup/cefpython3/locales",
             "subprocess":"cefpython3-31.2-linux64-setup/cefpython3/subprocess"
         }
