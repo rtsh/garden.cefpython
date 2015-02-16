@@ -1,6 +1,7 @@
 #: import CEFBrowser kivy.garden.cefpython.CEFBrowser
 
-BoxLayout:
+<ControlledCEFBrowser@BoxLayout>:
+    cef_browser: cef_browser
     orientation: 'vertical'
     BoxLayout:
         size_hint_y: None
@@ -10,36 +11,36 @@ BoxLayout:
             text: "<"
             size_hint_x: None
             width: self.height
-            disabled: not browser.can_go_back
+            disabled: not cef_browser.can_go_back
             on_press:
-                browser.go_back()
+                cef_browser.go_back()
         Button:
             id: forward_button
             text: ">"
             size_hint_x: None
             width: self.height
-            disabled: not browser.can_go_forward
+            disabled: not cef_browser.can_go_forward
             on_press:
-                browser.go_forward()
+                cef_browser.go_forward()
         Button:
             id: reload_button
             text: "x"
             size_hint_x: None
             width: self.height
             on_press:
-                if browser.url != url_input.text: browser.url = url_input.text
-                browser._browser.StopLoad() if self.text=="x" else browser._browser.Reload()
+                if cef_browser.url != url_input.text: cef_browser.url = url_input.text
+                cef_browser._browser.StopLoad() if self.text=="x" else cef_browser._browser.Reload()
         TextInput:
             id: url_input
             input_type: "url"
             multiline: False
             on_text_validate:
-                browser.url = self.text
+                cef_browser.url = self.text
             on_text:
-                if browser.url != self.text: reload_button.text = "Go"
+                if cef_browser.url != self.text: reload_button.text = "Go"
 
     CEFBrowser:
-        id: browser
+        id: cef_browser
         url: "http://www.rentouch.ch"
         on_url:
             url_input.text = args[1]
