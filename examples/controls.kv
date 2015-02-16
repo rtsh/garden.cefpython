@@ -27,6 +27,7 @@ BoxLayout:
             size_hint_x: None
             width: self.height
             on_press:
+                if browser.url != url_input.text: browser.url = url_input.text
                 browser._browser.StopLoad() if self.text=="x" else browser._browser.Reload()
         TextInput:
             id: url_input
@@ -34,6 +35,8 @@ BoxLayout:
             multiline: False
             on_text_validate:
                 browser.url = self.text
+            on_text:
+                if browser.url != self.text: reload_button.text = "Go"
 
     CEFBrowser:
         id: browser
