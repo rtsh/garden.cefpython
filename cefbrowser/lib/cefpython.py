@@ -52,14 +52,8 @@ Logger.info("CEFLoader: LIB_ID: %s", LIB_ID)
 # Try import from package (PYTHONPATH)
 try:
     from cefpython3 import cefpython
-    Logger.info("CEFLoader: cefpython imported from package")
-except Exception as error:
-    Logger.error("The import of cefpython3 package failed: %s", err)
+    Logger.info("CEFLoader: cefpython3 imported from package")
 except ImportError:
-    # No package found => Download it to local dir
-    Logger.info("Download compiled cefpython binaries")
-
-    # Download CEFPython
     if PLATFORM == 'linux':
         # correctly locate libcef.so (we need to extend
         # LD_LIBRARY_PATH for subprocess executable)
@@ -220,7 +214,7 @@ try:
             print("EXCEPTION IN CEF LOOP", e)
     Clock.schedule_interval(cef_loop, 0.01)
 except Exception as e:
-    raise Exception("Could not define module-directory: %s" % e)
+    raise Exception("CEFLoader: Could not define module-directory: %s" % e)
 
 settings = {
     "debug": True,
@@ -242,13 +236,12 @@ except:
     try:
         cefpython.Initialize(settings)
     except:
-        Logger.critical("CEFLoader: Failed to initialize cefpython")
-        raise Exception("Failed to initialize cefpython")
+        raise Exception("CEFLoader: Failed to initialize cefpython")
 
 try:
     cookie_manager = cefpython.CookieManager.GetGlobalManager()
     cookie_path = os.path.join(md, "cookies")
-    Logger.debug("Cookie path: %s", cookie_path)
+    Logger.debug("CEFLoader: Cookie path: %s", cookie_path)
     cookie_manager.SetStoragePath(cookie_path, True)
 except Exception as e:
     Logger.warning("CEFLoader: Failed to set up cookie manager: %s" % e)
