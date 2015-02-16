@@ -9,6 +9,8 @@ It then imports the cefpython module.
 """
 
 __all__ = ('cefpython', )
+import kivy
+kivy.require("1.8.0")
 
 from kivy.clock import Clock
 from kivy.logger import Logger
