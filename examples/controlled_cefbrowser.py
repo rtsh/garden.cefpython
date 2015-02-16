@@ -16,7 +16,7 @@ import re
 
 class ControlledCEFBrowser(Widget):
     navigation_bar_hei = NumericProperty(32)
-    
+
     def __init__ (self, *largs, **dargs):
         super(ControlledCEFBrowser, self).__init__()
         initBrowser = dargs.get("browser", False)
@@ -92,7 +92,7 @@ class ControlledCEFBrowser(Widget):
 
     def set_navigation_bar_hei(self, *largs):
         self.realign()
-    
+
     def realign(self, *largs):
         self.realign_back_button(self.back_button)
         self.realign_forward_button(self.forward_button)
@@ -122,7 +122,7 @@ class ControlledCEFBrowser(Widget):
         nbh = self.navigation_bar_hei
         cb.pos = (self.x, self.y)
         cb.size = (self.width, self.height-nbh)
-    
+
     def change_url(self, *largs):
         url = self.url_input.text
         if not re.match("^[a-zA-Z][a-zA-Z0-9\+\.\-]*\:\/\/", url):
@@ -145,4 +145,3 @@ if __name__ == '__main__':
     CEFApp().run()
 
     cefpython.Shutdown()
-
