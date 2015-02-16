@@ -4,8 +4,13 @@
 The CefTabbedBrowser Widget displays a browser with tabs.
 '''
 
+import functools
+import os
+
 from kivy.app import App
 from kivy.clock import Clock
+from kivy.factory import Factory
+from kivy.lang import Builder
 from kivy.properties import *
 from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
@@ -13,8 +18,8 @@ from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.stencilview import StencilView
 from kivy.uix.widget import Widget
-from controlled_cefbrowser import ControlledCEFBrowser
-import functools
+
+Builder.load_file(os.path.join(os.path.realpath(os.path.dirname(__file__)), "controls.kv"))
 
 class TabbedCEFBrowser(Widget):
     tabs = ListProperty([])
@@ -41,7 +46,7 @@ class TabbedCEFBrowser(Widget):
     def get_browser(self, button=None, **dargs):
         if button==None:
             button = self.tabs[self.selected_tab]["button"]
-        cb = ControlledCEFBrowser(**dargs)
+        cb = Factory.ControlledCEFBrowser() # ControlledCEFBrowser(**dargs)
         def titlechangetab(but, obj, newTitle):
             but.label.text = newTitle
             return True
