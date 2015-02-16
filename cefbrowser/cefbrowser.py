@@ -90,6 +90,7 @@ class CEFBrowser(Widget):
     If `close_handler` is None, cannot be executed or doesn't remove `browser`
     from the widget tree, the default is to just leave the keyboard widget
     where it is."""
+    _touches = []
     _browser = None
     _popup = None
     _texture = None
@@ -302,37 +303,98 @@ class CEFBrowser(Widget):
     def on_touch_down(self, touch, *kwargs):
         if not self.collide_point(*touch.pos):
             return
+
+        Window.release_all_keyboards()
+
+        touch.is_dragging = False
+        touch.is_scrolling = False
+        touch.is_right_click = False
+        self._touches.append(touch)
         touch.grab(self)
-        y = self.height-touch.pos[1] + self.pos[1]
-        x = touch.x - self.pos[0]
-        self._browser.SendMouseClickEvent(
-            x,
-            y,
-            cefpython.MOUSEBUTTON_LEFT,
-            mouseUp=False,
-            clickCount=1
-        )
+
         return True
 
     def on_touch_move(self, touch, *kwargs):
         if touch.grab_current is not self:
             return
+
         y = self.height-touch.pos[1] + self.pos[1]
         x = touch.x - self.pos[0]
-        self._browser.SendMouseMoveEvent(x, y, mouseLeave=False)
+
+        if len(self._touches) == 1:
+            # Dragging
+            if (abs(touch.dx) > 5 or abs(touch.dy) > 5) or touch.is_dragging:
+                if touch.is_dragging:
+                    self._browser.SendMouseMoveEvent(
+                        x, y, mouseLeave=False
+                    )
+                else:
+                    self._browser.SendMouseClickEvent(
+                        x, y, cefpython.MOUSEBUTTON_LEFT,
+                        mouseUp=False, clickCount=1
+                    )
+                    touch.is_dragging = True
+        elif len(self._touches) == 2:
+            # Scroll only if a minimal distance passed (could be right click)
+            touch1, touch2 = self._touches[:2]
+            dx = touch2.dx / 2. + touch1.dx / 2.
+            dy = touch2.dy / 2. + touch1.dy / 2.
+            if (abs(dx) > 5 or abs(dy) > 5) or touch.is_scrolling:
+                # Scrolling
+                touch.is_scrolling = True
+                self._browser.SendMouseWheelEvent(
+                    touch.x,
+                    self.height-touch.pos[1], dx, -dy
+                )
         return True
 
     def on_touch_up(self, touch, *kwargs):
         if touch.grab_current is not self:
             return
+
         y = self.height-touch.pos[1] + self.pos[1]
         x = touch.x - self.pos[0]
-        self._browser.SendMouseClickEvent(
-            x,
-            y,
-            cefpython.MOUSEBUTTON_LEFT,
-            mouseUp=True, clickCount=1
-        )
+
+        if len(self._touches) == 2:
+            if not touch.is_scrolling:
+                # Right click (mouse down, mouse up)
+                self._touches[0].is_right_click = self._touches[1].is_right_click = True
+                self._browser.SendMouseClickEvent(
+                    x, y, cefpython.MOUSEBUTTON_RIGHT,
+                    mouseUp=False, clickCount=1
+                    )
+                self._browser.SendMouseClickEvent(
+                    x, y, cefpython.MOUSEBUTTON_RIGHT,
+                    mouseUp=True, clickCount=1
+                    )
+        else:
+            if touch.is_dragging:
+                # Drag end (mouse up)
+                self._browser.SendMouseClickEvent(
+                    x,
+                    y,
+                    cefpython.MOUSEBUTTON_LEFT,
+                    mouseUp=True, clickCount=1
+                )
+            elif not touch.is_right_click:
+                # Left click (mouse down, mouse up)
+                count = 1
+                if touch.is_double_tap:
+                    count = 2
+                self._browser.SendMouseClickEvent(
+                    x,
+                    y,
+                    cefpython.MOUSEBUTTON_LEFT,
+                    mouseUp=False, clickCount=count
+                )
+                self._browser.SendMouseClickEvent(
+                    x,
+                    y,
+                    cefpython.MOUSEBUTTON_LEFT,
+                    mouseUp=True, clickCount=count
+                )
+
+        self._touches.remove(touch)
         touch.ungrab(self)
         return True
 
