@@ -10,6 +10,7 @@ BoxLayout:
             text: "<"
             size_hint_x: None
             width: self.height
+            disabled: not browser.can_go_back
             on_press:
                 browser.go_back()
         Button:
@@ -17,6 +18,7 @@ BoxLayout:
             text: ">"
             size_hint_x: None
             width: self.height
+            disabled: not browser.can_go_forward
             on_press:
                 browser.go_forward()
         Button:
@@ -42,10 +44,6 @@ BoxLayout:
             reload_button.text = "x"
         on_load_end:
             reload_button.text = "r"
-            back_button.disabled = not self._browser.CanGoBack()
-            forward_button.disabled = not self._browser.CanGoForward()
         on_load_error:
             reload_button.text = "r"
-            back_button.disabled = not self._browser.CanGoBack()
-            forward_button.disabled = not self._browser.CanGoForward()
 
