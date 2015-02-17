@@ -15,7 +15,7 @@ from kivy.lang import Builder
 from kivy.logger import Logger
 from kivy.properties import *
 from kivy.uix.widget import Widget
-from lib.cefpython import cefpython
+from lib.cefpython import cefpython, cefpython_initialize
 from cefkeyboard import CEFKeyboardManager
 
 import os
@@ -30,6 +30,11 @@ cef_browser_js_prompt = Factory.CEFBrowserJSPrompt()
 class CEFBrowser(Widget):
     """Displays a Browser"""
     # Class Variables
+    cache_path = None
+    """ The string `cache_path` class variable is the path to a read- and
+    writeable location where CEF can store its runtime cache data.
+    If `cache_path` is None or non-existent, the CEF default is used.
+    TODO: There should be a warning when changing this after Initialize"""
     certificate_error_handler = None
     """The value of the `certificate_error_handler` class variable is a
     function that handles certificate errors.
@@ -39,6 +44,7 @@ class CEFBrowser(Widget):
     It should return a bool that indicates whether to ignore the error or not:
     - True: Ignore warning - False: Abort loading
     If `certificate_error_handler` is None or cannot be executed, the default is False."""
+    _cefpython_initialized = False
     
     # Instance Variables
     url = StringProperty("about:blank")
@@ -122,11 +128,17 @@ class CEFBrowser(Widget):
             Color(1, 1, 1)
             self.__rect = Rectangle(pos=self.pos, size=self.size, texture=self._texture)
 
+        if not CEFBrowser._cefpython_initialized:
+            cache_path = ""
+            if CEFBrowser.cache_path:
+                if os.path.isdir(CEFBrowser.cache_path):
+                    cache_path = CEFBrowser.cache_path
+            cefpython_initialize({"cache_path":cache_path})
+            CEFBrowser._cefpython_initialized = True
         if not self._browser:
             windowInfo = cefpython.WindowInfo()
             windowInfo.SetAsOffscreen(0)
             self._browser = cefpython.CreateBrowserSync(windowInfo, {}, navigateUrl=self.url)
-
         self._browser.SetClientHandler(client_handler)
         client_handler.browser_widgets[self._browser] = self
         self._browser.WasResized()

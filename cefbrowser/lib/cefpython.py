@@ -14,7 +14,6 @@ kivy.require("1.8.0")
 
 from kivy.clock import Clock
 from kivy.logger import Logger
-from os.path import dirname, join, exists, realpath
 import ctypes
 import json
 import os
@@ -22,21 +21,15 @@ import sys
 import multiprocessing
 
 
-# Determine the Platform
-try:
-    from kivy import platform
-except Exception as err:
-    Logger.warning("CEFLoader: could not get current platform: %s", err)
-
-PLATFORM = platform
+PLATFORM = kivy.platform
 PYVERSION = sys.version_info[0]
 BITS = "64" if sys.maxsize > 2**32 else "32"
-PARDIR = realpath(dirname(__file__))
-CURDIR = join(PARDIR, "cefpython")
+PARDIR = os.path.realpath(os.path.dirname(__file__))
+CURDIR = os.path.join(PARDIR, "cefpython")
 LIB_ID = "%s%s.py%i"%(PLATFORM, BITS, PYVERSION)
-CEF_DIR = join(CURDIR, LIB_ID)
+CEF_DIR = os.path.join(CURDIR, LIB_ID)
 SUBPROCESS = "subprocess"
-fp = open(join(PARDIR, "cefpython_sources.json"), "r")
+fp = open(os.path.join(PARDIR, "cefpython_sources.json"), "r")
 SOURCES = json.load(fp)
 fp.close()
 Logger.debug("CEFLoader: PLATFORM: %s", PLATFORM)
@@ -59,7 +52,7 @@ except ImportError:
     if PLATFORM == 'linux':
         # correctly locate libcef.so (we need to extend
         # LD_LIBRARY_PATH for subprocess executable)
-        libcef = join(CEF_DIR, "libcef.so")
+        libcef = os.path.join(CEF_DIR, "libcef.so")
         LD_LIBRARY_PATH = os.environ.get('LD_LIBRARY_PATH', None)
         if not LD_LIBRARY_PATH:
             LD_LIBRARY_PATH = CEF_DIR
@@ -69,7 +62,7 @@ except ImportError:
     elif PLATFORM == 'win':
         # Add the DLL and export the PATH for windows
         SUBPROCESS += ".exe"
-        libcef = join(CEF_DIR, "libcef.dll")
+        libcef = os.path.join(CEF_DIR, "libcef.dll")
         PATH = os.environ.get('PATH', None)
         if not PATH:
             PATH = CEF_DIR
@@ -82,14 +75,14 @@ except ImportError:
     sys.path += [CEF_DIR]
 
     # Load precompiled cefpython from source
-    if not exists(libcef) and LIB_ID in SOURCES:
+    if not os.path.exists(libcef) and LIB_ID in SOURCES:
         s = SOURCES[LIB_ID]
         Logger.debug("CEFLoader: SOURCE: %s", json.dumps(s, indent=4))
         Logger.info("CEFLoader: Loading precompiled cefpython for "+LIB_ID+"...")
         path = CEF_DIR+".dat"
-        if exists(path):
+        if os.path.exists(path):
             os.unlink(path)
-        if not exists(CEF_DIR):
+        if not os.path.exists(CEF_DIR):
             os.makedirs(CEF_DIR)
         Logger.debug("CEFLoader: Downloading from "+s["url"]+" ...")
 
@@ -143,8 +136,8 @@ except ImportError:
                     for f in s["zip_files"]:
                         label_queue.put("Unzipping precompiled CEFPython... (%i of %i)"%(i, cnt), False)
                         progress.value = 80+float(i)*20./cnt
-                        src = join(CURDIR, s["zip_files"][f].replace("/", os.sep))
-                        dest = join(CEF_DIR, f)
+                        src = os.path.join(CURDIR, s["zip_files"][f].replace("/", os.sep))
+                        dest = os.path.join(CEF_DIR, f)
                         Logger.debug("CEFLoader: Copying "+src+" => "+dest+" ...")
                         if os.path.isfile(src):
                             shutil.copy(src, dest)
@@ -156,7 +149,7 @@ except ImportError:
                     label_queue.put("Cleaning up...", False)
                     n = z.namelist()[0]
                     ziproot = n[0:n.find(os.sep)]
-                    shutil.rmtree(join(CURDIR, ziproot))
+                    shutil.rmtree(os.path.join(CURDIR, ziproot))
                     Logger.info("CEFLoader: Unzipped precompiled cefpython for "+LIB_ID+" successfully")
                     label_queue.put("Finished.", False)
                     progress.value = 100.
@@ -205,45 +198,52 @@ except ImportError:
         Logger.critical("CEFLoader: Failed to import cefpython")
         raise Exception("Failed to import cefpython")
 
+cefpython_loop_event = None
 
-try:
-    md = cefpython.GetModuleDirectory()
+def cefpython_initialize(settings={}):
+    global cefpython_loop_event
+    if cefpython_loop_event:
+        Logger.warning("CEFLoader: Attempt to initialize CEFPython another time")
+        return
+    try:
+        md = cefpython.GetModuleDirectory()
+    except Exception as e:
+        raise Exception("CEFLoader: Could not define module-directory: %s" % e)
 
     def cef_loop(*largs):
         try:
             cefpython.MessageLoopWork()
         except Exception as e:
             print("EXCEPTION IN CEF LOOP", e)
-    Clock.schedule_interval(cef_loop, 0.01)
-except Exception as e:
-    raise Exception("CEFLoader: Could not define module-directory: %s" % e)
+    cefpython_loop_event = Clock.schedule_interval(cef_loop, 0.01)
 
-settings = {
-    "debug": True,
-    "log_severity": cefpython.LOGSEVERITY_INFO,
-    "log_file": "debug.log",
-    "release_dcheck_enabled": True,  # Enable only when debugging.
-    "locales_dir_path": join(md, "locales"),
-    "resources_dir_path": md,
-    "browser_subprocess_path": join(md, SUBPROCESS),
-    "unique_request_context_per_browser": True,
-}
+    default_settings = {
+        "debug": True,
+        "log_severity": cefpython.LOGSEVERITY_INFO,
+        "log_file": "debug.log",
+        "release_dcheck_enabled": True,  # Enable only when debugging.
+        "locales_dir_path": os.path.join(md, "locales"),
+        "resources_dir_path": md,
+        "browser_subprocess_path": os.path.join(md, SUBPROCESS),
+        "unique_request_context_per_browser": True,
+    }
+    default_settings.update(settings)
 
-try:
-    cefpython.Initialize(settings)
-except:
-    del settings["debug"]
-    cefpython.g_debug = True
-    cefpython.g_debugFile = "debug.log"
     try:
-        cefpython.Initialize(settings)
+        cefpython.Initialize(default_settings)
     except:
-        raise Exception("CEFLoader: Failed to initialize cefpython")
+        del default_settings["debug"]
+        cefpython.g_debug = True
+        cefpython.g_debugFile = "debug.log"
+        try:
+            cefpython.Initialize(default_settings)
+        except:
+            raise Exception("CEFLoader: Failed to initialize cefpython")
 
-try:
-    cookie_manager = cefpython.CookieManager.GetGlobalManager()
-    cookie_path = os.path.join(md, "cookies")
-    Logger.debug("CEFLoader: Cookie path: %s", cookie_path)
-    cookie_manager.SetStoragePath(cookie_path, True)
-except Exception as e:
-    Logger.warning("CEFLoader: Failed to set up cookie manager: %s" % e)
+    try:
+        cookie_manager = cefpython.CookieManager.GetGlobalManager()
+        cookie_path = os.path.join(md, "cookies")
+        Logger.debug("CEFLoader: Cookie path: %s", cookie_path)
+        cookie_manager.SetStoragePath(cookie_path, True)
+    except Exception as e:
+        Logger.warning("CEFLoader: Failed to set up cookie manager: %s" % e)

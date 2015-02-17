@@ -47,6 +47,14 @@ class TabbedCEFBrowser(Widget):
         if button==None:
             button = self.tabs[self.selected_tab]["button"]
         cb = Factory.ControlledCEFBrowser() # ControlledCEFBrowser(**dargs)
+        cef_browser = dargs.get("cef_browser", False)
+        if cef_browser:
+            p = cb.cef_browser.parent
+            p.remove_widget(cb.cef_browser)
+            cb.cef_browser = cef_browser
+            p.add_widget(cef_browser)
+        else:
+            cb.cef_browser.url = dargs.get("url", "http://www.google.com")
         def titlechangetab(but, obj, newTitle):
             but.label.text = newTitle
             return True
@@ -55,8 +63,10 @@ class TabbedCEFBrowser(Widget):
         def popup_always(obj, url):
             return True
         def popup_new_tab(obj, browser):
-            self.new_tab(browser=browser)
+            self.new_tab(cef_browser=browser)
             self.selected_tab = len(self.tabs)-1
+            self.set_selected_tab()
+            print "POPUP NEW TAB", browser, self.__displayed_browser
         def close_tab(cb, obj):
             for t in self.tabs:
                 if t["browser"]==cb:
@@ -146,12 +156,13 @@ class TabbedCEFBrowser(Widget):
     def new_tab(self, *largs, **dargs):
         i = dargs.get("index", len(self.tabs))
         b = None
-        browser = dargs.get("browser", False)
+        browser = None
+        cef_browser = dargs.get("cef_browser", False)
         url = "http://google.com"
-        if browser:
-            url = browser.url
+        if cef_browser:
+            url = cef_browser.url
             b = self.get_tab(url)
-            browser = self.get_browser(browser=browser, button=b)
+            browser = self.get_browser(cef_browser=cef_browser, button=b)
         else:
             url = dargs.get("url", url)
             b = self.get_tab(url)

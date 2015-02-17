@@ -3,3 +3,4 @@
 .idea
 *debug.log
 cefbrowser/lib/cefpython/*
+cef_cache
