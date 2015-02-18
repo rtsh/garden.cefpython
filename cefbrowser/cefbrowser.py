@@ -129,8 +129,8 @@ class CEFBrowser(Widget):
     __rect = None
     __js_bindings = None  # See _bind_js()
 
-    def __init__(self, *largs, **dargs):
-        self.url = dargs.pop("url", "about:blank")
+    def __init__(self, url="about:blank", *largs, **dargs):
+        self.url = url
         self.popup_policy = dargs.pop("popup_policy", CEFBrowser.always_block_popups)
         self.popup_handler = dargs.pop("popup_handler", CEFBrowser.fullscreen_popup)
         self.close_handler = dargs.pop("close_handler", CEFBrowser.do_nothing)
