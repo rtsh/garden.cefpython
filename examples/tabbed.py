@@ -100,6 +100,9 @@ class TabbedCEFBrowser(GridLayout):
         self.__tab_bar_new = Button(text="+", font_size=controls_size/2, size_hint=(None, 1), width=controls_size)
         def on_new_tab(but):
             self.add_tab(TabbedCEFBrowserTab(self, "http://google.com", "Google"))
+            def focus_url_input(*largs):
+                self.__url_input.focus = True
+            Clock.schedule_once(focus_url_input, 0)
         self.__tab_bar_new.bind(on_press=on_new_tab)
         gl.add_widget(self.__tab_bar_new)
         self.__control_bar_grid = GridLayout(rows=1, size_hint=(1, None), height=controls_size)
@@ -146,15 +149,22 @@ class TabbedCEFBrowser(GridLayout):
         self.select_first_tab()
     
     def _set_tab(self, new_tab):
+        def url_input_set_text(browser, url):
+            self.__url_input.text = url
+            if self.__url_input.focus:
+                self.__url_input.select_all()
         try:
-            self.__current_browser.unbind(url=self.__url_input.setter("text"))
+            self.__current_browser.unbind(url=url_input_set_text)
         except:
             pass
+        def old_tab_remove_keyboard(browser, *largs):
+            browser.release_keyboard()
+        Clock.schedule_once(functools.partial(old_tab_remove_keyboard, self.__current_browser))
         self.remove_widget(self.__current_browser)
         self.__url_input.text = new_tab.url
         self.__current_browser = new_tab.cef_browser
         self.add_widget(self.__current_browser)
-        self.__current_browser.bind(url=self.__url_input.setter("text"))
+        self.__current_browser.bind(url=url_input_set_text)
 
 if __name__ == '__main__':
     class CEFApp(App):
