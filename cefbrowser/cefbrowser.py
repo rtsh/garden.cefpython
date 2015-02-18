@@ -30,10 +30,34 @@ cef_browser_js_prompt = Factory.CEFBrowserJSPrompt()
 class CEFBrowser(Widget):
     """Displays a Browser"""
     # Class Variables
-    cache_path = None
-    """ The string `cache_path` class variable is the path to a read- and
-    writeable location where CEF can store its runtime cache data.
-    If `cache_path` is None or non-existent, the CEF default is used.
+    caches_path = None
+    """ The string `caches_path` class variable is the path to a read- and
+    writeable location where CEF can store its run-time caches.
+    If `caches_path` is None or has no parent directory, the value from 
+    `data_path` is used.
+    TODO: There should be a warning when changing this after Initialize"""
+    cookies_path = None
+    """ The string `cookies_path` class variable is the path to a read- and
+    writeable location where CEF can store its run-time cookies.
+    If `cookies_path` is None or has no parent directory, the value from 
+    `data_path` is used.
+    TODO: There should be a warning when changing this after Initialize"""
+    logs_path = None
+    """ The string `logs_path` class variable is the path to a read- and
+    writeable location where CEF can write its log.
+    If `logs_path` is None or has no parent directory, the value from 
+    `data_path` is used.
+    TODO: There should be a warning when changing this after Initialize"""
+    data_path = None
+    """ The string `data_path` class variable is the path to a read- and
+    writeable location where CEF can write its run-time data:
+    - caches to '`data_path`/cache'
+    - cookies to '`data_path`/cookies'
+    - logs to '`data_path`/log.txt'
+    This is ONLY taken into account, if `caches_path`, `cookies_path` or
+    `logs_path` is not set
+    If `data_path` is None or has no parent directory, the default paths for
+    caches, cookies and logs are in the module directory by default.
     TODO: There should be a warning when changing this after Initialize"""
     certificate_error_handler = None
     """The value of the `certificate_error_handler` class variable is a
@@ -43,7 +67,8 @@ class CEFBrowser(Widget):
     - `url`: The URL that was to be loaded
     It should return a bool that indicates whether to ignore the error or not:
     - True: Ignore warning - False: Abort loading
-    If `certificate_error_handler` is None or cannot be executed, the default is False."""
+    If `certificate_error_handler` is None or cannot be executed, the default
+    is False."""
     _cefpython_initialized = False
     
     # Instance Variables
@@ -129,11 +154,7 @@ class CEFBrowser(Widget):
             self.__rect = Rectangle(pos=self.pos, size=self.size, texture=self._texture)
 
         if not CEFBrowser._cefpython_initialized:
-            cache_path = ""
-            if CEFBrowser.cache_path:
-                if os.path.isdir(CEFBrowser.cache_path):
-                    cache_path = CEFBrowser.cache_path
-            cefpython_initialize({"cache_path":cache_path})
+            cefpython_initialize(CEFBrowser)
             CEFBrowser._cefpython_initialized = True
         if not self._browser:
             windowInfo = cefpython.WindowInfo()

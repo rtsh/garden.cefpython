@@ -9,16 +9,20 @@ It then imports the cefpython module.
 """
 
 __all__ = ('cefpython', )
-import kivy
-kivy.require("1.8.0")
 
-from kivy.clock import Clock
-from kivy.logger import Logger
+import atexit
 import ctypes
 import json
 import os
+import signal
 import sys
 import multiprocessing
+
+import kivy
+kivy.require("1.8.0")
+from kivy.app import App
+from kivy.clock import Clock
+from kivy.logger import Logger
 
 
 PLATFORM = kivy.platform
@@ -200,7 +204,7 @@ except ImportError:
 
 cefpython_loop_event = None
 
-def cefpython_initialize(settings={}):
+def cefpython_initialize(CEFBrowser):
     global cefpython_loop_event
     if cefpython_loop_event:
         Logger.warning("CEFLoader: Attempt to initialize CEFPython another time")
@@ -209,6 +213,7 @@ def cefpython_initialize(settings={}):
         md = cefpython.GetModuleDirectory()
     except Exception as e:
         raise Exception("CEFLoader: Could not define module-directory: %s" % e)
+    Logger.debug("CEFLoader: Module Directory: %s", md)
 
     def cef_loop(*largs):
         try:
@@ -218,32 +223,62 @@ def cefpython_initialize(settings={}):
     cefpython_loop_event = Clock.schedule_interval(cef_loop, 0.01)
 
     default_settings = {
-        "debug": True,
+        #"debug": True,
         "log_severity": cefpython.LOGSEVERITY_INFO,
-        "log_file": "debug.log",
-        "release_dcheck_enabled": True,  # Enable only when debugging.
+        #"release_dcheck_enabled": True,  # Enable only when debugging.
         "locales_dir_path": os.path.join(md, "locales"),
         "resources_dir_path": md,
         "browser_subprocess_path": os.path.join(md, SUBPROCESS),
         "unique_request_context_per_browser": True,
     }
-    default_settings.update(settings)
+    caches_path = os.path.join(md, "caches")
+    cookies_path = os.path.join(md, "cookies")
+    logs_path = os.path.join(md, "logs")
+    if CEFBrowser.data_path and os.path.isdir(os.path.dirname(CEFBrowser.data_path)):
+        caches_path = os.path.join(CEFBrowser.data_path, "caches")
+        cookies_path = os.path.join(CEFBrowser.data_path, "cookies")
+        logs_path = os.path.join(CEFBrowser.data_path, "logs")
+    if CEFBrowser.caches_path and os.path.isdir(os.path.dirname(CEFBrowser.caches_path)):
+        caches_path = CEFBrowser.caches_path
+    if CEFBrowser.cookies_path and os.path.isdir(os.path.dirname(CEFBrowser.cookies_path)):
+        cookies_path = CEFBrowser.cookies_path
+    if CEFBrowser.logs_path and os.path.isdir(os.path.dirname(CEFBrowser.logs_path)):
+        logs_path = CEFBrowser.logs_path
+    Logger.debug("CEFLoader: Caches path: %s", caches_path)
+    Logger.debug("CEFLoader: Cookies path: %s", cookies_path)
+    Logger.debug("CEFLoader: Logs path: %s", logs_path)
+    if not os.path.isdir(caches_path):
+        os.makedirs(caches_path, 0o0700)
+    default_settings["cache_path"] = caches_path
+    if not os.path.isdir(cookies_path):
+        os.makedirs(cookies_path, 0o0700)
+    if not os.path.isdir(logs_path):
+        os.makedirs(logs_path, 0o0700)
+    default_settings["log_file"] = os.path.join(logs_path, "cefpython.log")
 
     try:
         cefpython.Initialize(default_settings)
-    except:
+    except Exception as err:
         del default_settings["debug"]
         cefpython.g_debug = True
         cefpython.g_debugFile = "debug.log"
         try:
             cefpython.Initialize(default_settings)
-        except:
-            raise Exception("CEFLoader: Failed to initialize cefpython")
+        except Exception as err:
+            raise Exception("CEFLoader: Failed to initialize cefpython %s", err)
 
     try:
         cookie_manager = cefpython.CookieManager.GetGlobalManager()
-        cookie_path = os.path.join(md, "cookies")
-        Logger.debug("CEFLoader: Cookie path: %s", cookie_path)
-        cookie_manager.SetStoragePath(cookie_path, True)
+        cookie_manager.SetStoragePath(cookies_path, True)
     except Exception as e:
         Logger.warning("CEFLoader: Failed to set up cookie manager: %s" % e)
+
+    def cefpython_shutdown(*largs):
+        print "CEFPYTHON SHUTDOWN", largs, App.get_running_app()
+        cefpython.Shutdown()
+        App.get_running_app().stop()
+    def cefpython_exit(*largs):
+        cefpython_shutdown()
+        sys.exit()
+    atexit.register(cefpython_shutdown)
+    signal.signal(signal.SIGINT, cefpython_exit)

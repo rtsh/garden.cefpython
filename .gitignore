@@ -3,4 +3,7 @@
 .idea
 *debug.log
 cefbrowser/lib/cefpython/*
-cef_cache
+cef_data
+cef_caches
+cef_cookies
+cef_logs
