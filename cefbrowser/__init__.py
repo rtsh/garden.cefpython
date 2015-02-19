@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-__version__ = '0.1'
 __all__ = ('cef_test_url', 'CEFBrowser', )
 
 import os
 
+from .version import __version__
 from cefbrowser import CEFBrowser
 
 cef_test_url = "file://"+os.path.join(os.path.dirname(os.path.realpath(__file__)), "test.html")
