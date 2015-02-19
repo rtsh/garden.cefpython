@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 #==============================================================================
-# Written by Rentouch 2013 - http://www.rentouch.ch
+# Written by Rentouch 2014 - http://www.rentouch.ch
 #==============================================================================
 
 from setuptools import setup
