@@ -21,9 +21,10 @@ setup(name='cefbrowser',
       author_email='info@rentouch.ch',
       url='http://www.rentouch.ch',
 
-      package_data={'cefbrowser': ['images/*.png', '*.kv']},
+      package_data={'cefbrowser': ['images/*.png', '*.kv'],
+                    'cefbrowser.lib': ['*.json']},
 
-      packages=['cefbrowser', ],
+      packages=['cefbrowser', 'cefbrowser.lib'],
 
       install_requires=reqs
 )
