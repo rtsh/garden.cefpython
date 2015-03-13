@@ -219,6 +219,15 @@ class CEFBrowser(Widget):
     def go_forward(self):
         self._browser.GoForward()
 
+    def stop_loading(self):
+        self._browser.StopLoad()
+
+    def reload(self, ignore_cache=True):
+        if ignore_cache:
+            self._browser.ReloadIgnoreCache()
+        else:
+            self._browser.Reload()
+
     def delete_cookie(self, url=""):
         """ Deletes the cookie with the given url. If url is empty all cookies get deleted.
         """

@@ -104,7 +104,7 @@ except ImportError:
         content.add_widget(lab)
 
         popup = Popup(title="Chromium Embedded Framework Installer", content=content, size_hint=(0.75, None), height=200, auto_dismiss=False)
-        content.bind(on_press=popup.dismiss)
+        # content.bind(on_press=popup.dismiss) # shouldn't be, right?
 
         def download(s, path, progress, label_queue):
             import urllib2
@@ -114,6 +114,7 @@ except ImportError:
             cur = 0
             tot = int(fh.info()["Content-Length"])
             stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+            lastpercent = 0
             while buf:
                 buf = fh.read(8192)
                 cur += len(buf)
@@ -121,7 +122,9 @@ except ImportError:
                 stdout.write("Downloading: %3i%%\r"%(percent,))
                 stdout.flush()
                 progress.value = percent*0.8
-                label_queue.put("Downloading precompiled CEFPython... (%i%%)"%(percent,), False)
+                if int(percent)!=lastpercent:
+                    label_queue.put("Downloading precompiled CEFPython... (%i%%)"%(percent,), False)
+                    lastpercent = int(percent)
                 fp.write(buf)
             fh.close()
             fp.close()
@@ -185,6 +188,7 @@ except ImportError:
             if download_proc.is_alive():
                 Clock.schedule_once(test_download, 0.05)
             else:
+                popup.dismiss(force=True)
                 cef_loader_app.stop()
         Clock.schedule_once(test_download, 0.05)
         cef_loader_app.run()

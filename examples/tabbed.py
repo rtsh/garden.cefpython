@@ -32,6 +32,7 @@ controls_size = 36
 class TabbedCEFBrowserTab(GridLayout):
     text = StringProperty()
     url = StringProperty()
+    last_tab = None
     __tabbed_cef_browser = None
     __cef_browser = None
     def __init__(self, tabbed_cef_browser, url="", text="", cef_browser=None):
@@ -66,9 +67,6 @@ class TabbedCEFBrowserTab(GridLayout):
     def close(self, *largs):
         self.cef_browser._browser.CloseBrowser()
     
-    def remove(self, *largs):
-        self.__tabbed_cef_browser.remove_tab(self)
-    
     @property
     def cef_browser(self):
         if not self.__cef_browser:
@@ -81,19 +79,34 @@ class TabbedCEFBrowserTab(GridLayout):
         def popup_new_tab_handler(browser, popup_browser):
             self.__tabbed_cef_browser.add_tab(TabbedCEFBrowserTab(self.__tabbed_cef_browser, cef_browser=popup_browser))
         self.__cef_browser.popup_handler = popup_new_tab_handler
-        self.__cef_browser.close_handler = self.remove
+        def close_tab_handler(browser, *largs):
+            self.__tabbed_cef_browser.remove_tab(self)
+        self.__cef_browser.close_handler = close_tab_handler
         self.__cef_browser.bind(url=self.setter("url"))
         self.__cef_browser.bind(title=self.setter("text"))
+        def load_button_x(browser, *largs):
+            self.__tabbed_cef_browser._load_button.text = "Go" if self.__tabbed_cef_browser._url_input.focus else "x"
+        def load_button_r(browser, *largs):
+            self.__tabbed_cef_browser._load_button.text = "Go" if self.__tabbed_cef_browser._url_input.focus else "r"
+        self.__cef_browser.bind(on_load_start=load_button_x)
+        self.__cef_browser.bind(on_load_end=load_button_r)
+        self.__cef_browser.bind(on_load_error=load_button_r)
 
 class TabbedCEFBrowser(GridLayout):
     def __init__(self, urls=["http://www.rentouch.ch"], *largs, **dargs):
         super(TabbedCEFBrowser, self).__init__(cols=1, *largs, **dargs)
         gl = GridLayout(rows=1, size_hint=(1, None), height=controls_size)
+        self.current_tab = None
         self.__tab_bar_scroll = ScrollView(size_hint=(1, 1))
         self.__tab_bar_grid = GridLayout(rows=1, size_hint=(None, 1))
         self.__tab_bar_grid.bind(minimum_width=self.__tab_bar_grid.setter("width"))
+        last_tab = None
         for url in urls:
-            self.__tab_bar_grid.add_widget(TabbedCEFBrowserTab(self, url, url))
+            this_tab = TabbedCEFBrowserTab(self, url, url)
+            this_tab.last_tab = last_tab
+            self.__tab_bar_grid.add_widget(this_tab)
+            last_tab = this_tab
+        self.current_tab = last_tab
         self.__tab_bar_scroll.add_widget(self.__tab_bar_grid)
         self.__tab_bar_scroll.bind(height=self.__tab_bar_grid.setter("height"))
         gl.add_widget(self.__tab_bar_scroll)
@@ -101,30 +114,41 @@ class TabbedCEFBrowser(GridLayout):
         def on_new_tab(but):
             self.add_tab(TabbedCEFBrowserTab(self, "http://google.com", "Google"))
             def focus_url_input(*largs):
-                self.__url_input.focus = True
+                self._url_input.focus = True
             Clock.schedule_once(focus_url_input, 0)
         self.__tab_bar_new.bind(on_press=on_new_tab)
         gl.add_widget(self.__tab_bar_new)
         self.__control_bar_grid = GridLayout(rows=1, size_hint=(1, None), height=controls_size)
-        self.__back_button = Button(text="<", font_size=controls_size/2, size_hint=(None, 1), width=controls_size)
-        self.__forward_button = Button(text=">", font_size=controls_size/2, size_hint=(None, 1), width=controls_size)
-        self.__url_input = TextInput(text="http://", font_size=controls_size/2, size_hint=(1, 1), multiline=False)
+        self._back_button = Button(text="<", font_size=controls_size/2, size_hint=(None, 1), width=controls_size)
+        self._forward_button = Button(text=">", font_size=controls_size/2, size_hint=(None, 1), width=controls_size)
+        self._url_input = TextInput(text="http://", font_size=controls_size/2, size_hint=(1, 1), multiline=False)
         def on_url_focus(url_input, new_focus):
             if new_focus:
                 def fn(*largs):
                     url_input.select_all()
                 Clock.schedule_once(fn, 0)
+                self._load_button.text = "Go"
             else:
                 url_input.text = self.__current_browser.url
-        self.__url_input.bind(focus=on_url_focus)
+                self._load_button.text = "x" if self.__current_browser.is_loading else "r"
+        self._url_input.bind(focus=on_url_focus)
         def on_url_validate(url_input):
-            self.__current_browser.url = url_input.text
-        self.__url_input.bind(on_text_validate=on_url_validate)
-        self.__load_button = Button(text="Go", font_size=controls_size/2, size_hint=(None, 1), width=controls_size)
-        self.__control_bar_grid.add_widget(self.__back_button)
-        self.__control_bar_grid.add_widget(self.__forward_button)
-        self.__control_bar_grid.add_widget(self.__url_input)
-        self.__control_bar_grid.add_widget(self.__load_button)
+            self.__current_browser.url = self._url_input.text
+        self._url_input.bind(on_text_validate=on_url_validate)
+        self._load_button = Button(text="Go", font_size=controls_size/2, size_hint=(None, 1), width=controls_size)
+        def on_load_button(load_button):
+            if self._url_input.focus:
+                self.__current_browser.url = self._url_input.text
+            elif self.__current_browser.is_loading:
+                self.__current_browser.stop_loading()
+            else:
+                print(dir(self.__current_browser))
+                self.__current_browser.reload()
+        self._load_button.bind(on_press=on_load_button)
+        self.__control_bar_grid.add_widget(self._back_button)
+        self.__control_bar_grid.add_widget(self._forward_button)
+        self.__control_bar_grid.add_widget(self._url_input)
+        self.__control_bar_grid.add_widget(self._load_button)
         self.__current_browser = CEFBrowser()
         self.add_widget(gl)
         self.add_widget(self.__control_bar_grid)
@@ -146,13 +170,23 @@ class TabbedCEFBrowser(GridLayout):
     
     def remove_tab(self, remove_tab):
         self.__tab_bar_grid.remove_widget(remove_tab)
-        self.select_first_tab()
+        self.current_tab = remove_tab.last_tab
+        remove_tab.last_tab.select()
     
     def _set_tab(self, new_tab):
+        if self.current_tab!=new_tab:
+            ct = self.current_tab
+            tmp = ct
+            while tmp:
+                if tmp.last_tab==new_tab:
+                    tmp.last_tab = new_tab.last_tab
+                tmp = tmp.last_tab
+            new_tab.last_tab = ct
+            self.current_tab = new_tab
         def url_input_set_text(browser, url):
-            self.__url_input.text = url
-            if self.__url_input.focus:
-                self.__url_input.select_all()
+            self._url_input.text = url
+            if self._url_input.focus:
+                self._url_input.select_all()
         try:
             self.__current_browser.unbind(url=url_input_set_text)
         except:
@@ -161,7 +195,7 @@ class TabbedCEFBrowser(GridLayout):
             browser.release_keyboard()
         Clock.schedule_once(functools.partial(old_tab_remove_keyboard, self.__current_browser))
         self.remove_widget(self.__current_browser)
-        self.__url_input.text = new_tab.url
+        self._url_input.text = new_tab.url
         self.__current_browser = new_tab.cef_browser
         self.add_widget(self.__current_browser)
         self.__current_browser.bind(url=url_input_set_text)
