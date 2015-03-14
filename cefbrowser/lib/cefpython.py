@@ -171,8 +171,6 @@ except ImportError:
         download_proc = multiprocessing.Process(target=download, args=(s, path, progress, label_queue))
 
         class CefLoaderApp(App):
-            def build(self):
-                return popup
             def on_start(self):
                 popup.open()
         cef_loader_app = CefLoaderApp()
