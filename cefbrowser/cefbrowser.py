@@ -18,6 +18,7 @@ from kivy.uix.widget import Widget
 from lib.cefpython import cefpython, cefpython_initialize
 from cefkeyboard import CEFKeyboardManager
 
+import json
 import os
 import random
 
@@ -106,7 +107,6 @@ class CEFBrowser(Widget):
     _texture = None
     __keyboard = None
     __rect = None
-    __js_bindings = None  # See _bind_js()
 
     def __init__(self, url="about:blank", *largs, **dargs):
         self.url = url
@@ -114,10 +114,10 @@ class CEFBrowser(Widget):
         self.popup_handler = dargs.pop("popup_handler", CEFBrowser.fullscreen_popup)
         self.close_handler = dargs.pop("close_handler", CEFBrowser.do_nothing)
         self.keyboard_position = dargs.pop("keyboard_position", CEFBrowser.keyboard_position_optimal)
+        self.js = CEFBrowserJSProxy(self)
         self._browser = dargs.pop("browser", None)
         self._popup = CEFBrowserPopup(self)
         self.__rect = None
-        self.__js_bindings = None
         super(CEFBrowser, self).__init__(**dargs)
 
         self.register_event_type("on_load_start")
@@ -144,7 +144,7 @@ class CEFBrowser(Widget):
         self._browser.WasResized()
         self.bind(size=self._realign)
         self.bind(pos=self._realign)
-        self._bind_js()
+        self.js._inject()
 
     @classmethod
     def update_command_line_switches(cls, d):
@@ -201,21 +201,6 @@ class CEFBrowser(Widget):
         CEFBrowser._cookies_path = os.path.join(dp, "cookies")
         CEFBrowser._logs_path = os.path.join(dp, "logs")
         Logger.debug("CEFBrowser: \ncaches_path: %s\n cookies_path: %s\n logs_path: %s", CEFBrowser._caches_path, CEFBrowser._cookies_path, CEFBrowser._logs_path)
-
-    def _bind_js(self):
-        # When browser.Navigate() is called, some bug appears in CEF
-        # that makes CefRenderProcessHandler::OnBrowserDestroyed()
-        # is being called. This destroys the javascript bindings in
-        # the Render process. We have to make the js bindings again,
-        # after the call to Navigate() when OnLoadingStateChange()
-        # is called with isLoading=False. Problem reported here:
-        # http://www.magpcss.org/ceforum/viewtopic.php?f=6&t=11009
-        if not self.__js_bindings:
-            self.__js_bindings = cefpython.JavascriptBindings(bindToFrames=True, bindToPopups=True)
-            self.__js_bindings.SetFunction("__kivy__keyboard_update", self._keyboard_update)
-            self._browser.SetJavascriptBindings(self.__js_bindings)
-        else:
-            self.__js_bindings.Rebind()
 
     def _realign(self, *largs):
         ts = self._texture.size
@@ -489,9 +474,9 @@ class CEFBrowserPopup(Widget):
     ry = NumericProperty(0)
     rpos = ReferenceListProperty(rx, ry)
 
-    def __init__(self, parent, *largs, **dargs):
+    def __init__(self, browser_widget, *largs, **dargs):
         super(CEFBrowserPopup, self).__init__()
-        self.browser_widget = parent
+        self.browser_widget = browser_widget
         self.__rect = None
         self._texture = Texture.create(size=self.size, colorfmt='rgba', bufferfmt='ubyte')
         self._texture.flip_vertical()
@@ -500,8 +485,8 @@ class CEFBrowserPopup(Widget):
             self.__rect = Rectangle(pos=self.pos, size=self.size, texture=self._texture)
         self.bind(rpos=self._realign)
         self.bind(size=self._realign)
-        parent.bind(pos=self._realign)
-        parent.bind(size=self._realign)
+        browser_widget.bind(pos=self._realign)
+        browser_widget.bind(size=self._realign)
 
     def _realign(self, *largs):
         self.x = self.rx+self.browser_widget.x
@@ -526,6 +511,55 @@ class CEFBrowserPopup(Widget):
             self.__rect.texture = self._texture
 
 
+class CEFBrowserJSFunctionProxy():
+    def __init__(self, browser_widget, key, *largs):
+        self.browser_widget = browser_widget
+        self.key = key
+    
+    def __call__(self, *largs):
+        js_code = str(self.key)+"("
+        first = True
+        for arg in largs:
+            if not first:
+                js_code += ", "
+            js_code += json.dumps(arg)
+            first = False
+        js_code += ");"
+        frame = self.browser_widget._browser.GetMainFrame()
+        frame.ExecuteJavascript(js_code)
+
+class CEFBrowserJSProxy():
+    def __init__(self, browser_widget, *largs):
+        self.browser_widget = browser_widget
+        self.__js_bindings_dict = {"__kivy__keyboard_update":browser_widget._keyboard_update}
+        self.__js_bindings = None
+    
+    def _inject(self):
+        # When browser.Navigate() is called, some bug appears in CEF
+        # that makes CefRenderProcessHandler::OnBrowserDestroyed()
+        # is being called. This destroys the javascript bindings in
+        # the Render process. We have to make the js bindings again,
+        # after the call to Navigate() when OnLoadingStateChange()
+        # is called with isLoading=False. Problem reported here:
+        # http://www.magpcss.org/ceforum/viewtopic.php?f=6&t=11009
+        if not self.__js_bindings:
+            self.__js_bindings = cefpython.JavascriptBindings(bindToFrames=True, bindToPopups=True)
+            for k in self.__js_bindings_dict:
+                self.__js_bindings.SetFunction(k, self.__js_bindings_dict[k])
+            self.browser_widget._browser.SetJavascriptBindings(self.__js_bindings)
+        else:
+            self.__js_bindings.Rebind()
+    
+    def bind(self, **dargs):
+        self.__js_bindings_dict.update(dargs)
+        self.__js_bindings = None
+        self._inject()
+    
+    def __getattr__(self, key):
+        print "getattr", key
+        return CEFBrowserJSFunctionProxy(self.browser_widget, key)
+
+
 class ClientHandler():
     browser_widgets = {}
     pending_popups = {}
@@ -541,7 +575,7 @@ class ClientHandler():
         bw.can_go_back = can_go_back
         bw.can_go_forward = can_go_forward
         if not is_loading:
-            bw._bind_js()
+            bw.js._inject()
 
     def OnAddressChange(self, browser, frame, url):
         if browser.GetMainFrame()==frame:
