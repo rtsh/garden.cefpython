@@ -50,6 +50,7 @@ class CEFBrowser(Widget):
     _caches_path = None
     _cookies_path = None
     _logs_path = None
+    _cookie_manager = None
     
     # Instance Variables
     url = StringProperty("about:blank")

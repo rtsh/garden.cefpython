@@ -269,6 +269,7 @@ def cefpython_initialize(CEFBrowser):
     try:
         cookie_manager = cefpython.CookieManager.GetGlobalManager()
         cookie_manager.SetStoragePath(cookies_path, True)
+        CEFBrowser._cookie_manager = cookie_manager
     except Exception as e:
         Logger.warning("CEFLoader: Failed to set up cookie manager: %s" % e)
 
