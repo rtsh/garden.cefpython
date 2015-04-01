@@ -20,14 +20,8 @@ from kivy.uix.label import Label
 if __name__ == '__main__':
     class SimpleBrowserApp(App):
         def build(self):
-            CEFBrowser.data_path = os.path.realpath("./cef_data")
-            if not os.path.isdir(CEFBrowser.data_path):
-                try:
-                    os.mkdir(CEFBrowser.data_path, 0o0777)
-                except Exception as err:
-                    Logger.error("Example: Could not create CEF cache directory: %s", err)
-                    return Label(text="[color=ff0000][b]Could not create CEF cache directory[/b][/color]\n\n%s\n\n- You need to run this script from a directory where you have write permission.\n- A file with the name 'cef_cache' must not exist in that directory."%(err,), markup=True)
-            Logger.info("Example: The CEF cache path has been set to: %s", CEFBrowser.data_path)
+            CEFBrowser.set_data_path(os.path.realpath("./cef_data"))
+            Logger.info("Example: The CEF pathes have been set to \n- Cache %s\n- Cookies %s\n- Logs %s", CEFBrowser._caches_path, CEFBrowser._cookies_path, CEFBrowser._logs_path)
             cb = CEFBrowser(url="http://jegger.ch/datapool/app/test.html")
             return cb
 

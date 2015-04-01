@@ -153,7 +153,7 @@ class CEFBrowser(Widget):
         if CEFBrowser._cefpython_initialized:
             raise CEFAlreadyInitialized()
         CEFBrowser._command_line_switches.update(d)
-        Logger.debug("update_command_line_switches => %s", CEFBrowser._command_line_switches)
+        Logger.debug("CEFBrowser: update_command_line_switches => %s", CEFBrowser._command_line_switches)
         print "update_command_line_switches", cls._command_line_switches
 
     @classmethod
@@ -163,7 +163,7 @@ class CEFBrowser(Widget):
         if CEFBrowser._cefpython_initialized:
             raise CEFAlreadyInitialized()
         CEFBrowser._settings.update(d)
-        Logger.debug("update_settings => %s", CEFBrowser._settings)
+        Logger.debug("CEFBrowser: update_settings => %s", CEFBrowser._settings)
 
     @classmethod
     def set_caches_path(cls, cp):
@@ -171,7 +171,7 @@ class CEFBrowser(Widget):
         if CEFBrowser._cefpython_initialized:
             raise CEFAlreadyInitialized()
         CEFBrowser._caches_path = cp
-        Logger.debug("caches_path: %s\n cookies_path: %s\n logs_path: %s", CEFBrowser._caches_path, CEFBrowser._cookies_path, CEFBrowser._logs_path)
+        Logger.debug("CEFBrowser: caches_path: %s\n cookies_path: %s\n logs_path: %s", CEFBrowser._caches_path, CEFBrowser._cookies_path, CEFBrowser._logs_path)
 
     @classmethod
     def set_cookies_path(cls, cp):
@@ -179,7 +179,7 @@ class CEFBrowser(Widget):
         if CEFBrowser._cefpython_initialized:
             raise CEFAlreadyInitialized()
         CEFBrowser._cookies_path = cp
-        Logger.debug("caches_path: %s\n cookies_path: %s\n logs_path: %s", CEFBrowser._caches_path, CEFBrowser._cookies_path, CEFBrowser._logs_path)
+        Logger.debug("CEFBrowser: caches_path: %s\n cookies_path: %s\n logs_path: %s", CEFBrowser._caches_path, CEFBrowser._cookies_path, CEFBrowser._logs_path)
 
     @classmethod
     def set_logs_path(cls, lp):
@@ -187,7 +187,7 @@ class CEFBrowser(Widget):
         if CEFBrowser._cefpython_initialized:
             raise CEFAlreadyInitialized()
         CEFBrowser._logs_path = lp
-        Logger.debug("caches_path: %s\n cookies_path: %s\n logs_path: %s", CEFBrowser._caches_path, CEFBrowser._cookies_path, CEFBrowser._logs_path)
+        Logger.debug("CEFBrowser: caches_path: %s\n cookies_path: %s\n logs_path: %s", CEFBrowser._caches_path, CEFBrowser._cookies_path, CEFBrowser._logs_path)
 
     @classmethod
     def set_data_path(cls, dp):
@@ -200,7 +200,7 @@ class CEFBrowser(Widget):
         CEFBrowser._caches_path = os.path.join(dp, "caches")
         CEFBrowser._cookies_path = os.path.join(dp, "cookies")
         CEFBrowser._logs_path = os.path.join(dp, "logs")
-        Logger.debug("\ncaches_path: %s\n cookies_path: %s\n logs_path: %s", CEFBrowser._caches_path, CEFBrowser._cookies_path, CEFBrowser._logs_path)
+        Logger.debug("CEFBrowser: \ncaches_path: %s\n cookies_path: %s\n logs_path: %s", CEFBrowser._caches_path, CEFBrowser._cookies_path, CEFBrowser._logs_path)
 
     def _bind_js(self):
         # When browser.Navigate() is called, some bug appears in CEF
