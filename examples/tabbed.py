@@ -88,8 +88,8 @@ class TabbedCEFBrowserTab(GridLayout):
             self.__tabbed_cef_browser._load_button.text = "Go" if self.__tabbed_cef_browser._url_input.focus else "x"
         def on_load_end(browser, *largs):
             self.__tabbed_cef_browser._load_button.text = "Go" if self.__tabbed_cef_browser._url_input.focus else "r"
-            self.__tabbed_cef_browser._back_button.text = "<" if self.__tabbed_cef_browser.__current_browser.can_go_back else "-"
-            self.__tabbed_cef_browser._forward_button.text = ">" if self.__tabbed_cef_browser.__current_browser.can_go_forward else "-"
+            self.__tabbed_cef_browser._back_button.disabled = not self.__tabbed_cef_browser._current_browser.can_go_back
+            self.__tabbed_cef_browser._forward_button.disabled = not self.__tabbed_cef_browser._current_browser.can_go_forward
         self.__cef_browser.bind(on_load_start=on_load_start)
         self.__cef_browser.bind(on_load_end=on_load_end)
         self.__cef_browser.bind(on_load_error=on_load_end)
@@ -123,11 +123,11 @@ class TabbedCEFBrowser(GridLayout):
         self.__control_bar_grid = GridLayout(rows=1, size_hint=(1, None), height=controls_size)
         self._back_button = Button(text="<", font_size=controls_size/2, size_hint=(None, 1), width=controls_size)
         def on_back_press(back_button):
-            self.__current_browser.go_back()
+            self._current_browser.go_back()
         self._back_button.bind(on_press=on_back_press)
         self._forward_button = Button(text=">", font_size=controls_size/2, size_hint=(None, 1), width=controls_size)
         def on_forward_press(forward_button):
-            self.__current_browser.go_forward()
+            self._current_browser.go_forward()
         self._forward_button.bind(on_press=on_forward_press)
         self._url_input = TextInput(text="http://", font_size=controls_size/2, size_hint=(1, 1), multiline=False)
         def on_url_focus(url_input, new_focus):
@@ -137,30 +137,30 @@ class TabbedCEFBrowser(GridLayout):
                 Clock.schedule_once(fn, 0)
                 self._load_button.text = "Go"
             else:
-                url_input.text = self.__current_browser.url
-                self._load_button.text = "x" if self.__current_browser.is_loading else "r"
+                url_input.text = self._current_browser.url
+                self._load_button.text = "x" if self._current_browser.is_loading else "r"
         self._url_input.bind(focus=on_url_focus)
         def on_url_validate(url_input):
-            self.__current_browser.url = self._url_input.text
+            self._current_browser.url = self._url_input.text
         self._url_input.bind(on_text_validate=on_url_validate)
         self._load_button = Button(text="Go", font_size=controls_size/2, size_hint=(None, 1), width=controls_size)
         def on_load_button(load_button):
             if self._url_input.focus:
-                self.__current_browser.url = self._url_input.text
-            elif self.__current_browser.is_loading:
-                self.__current_browser.stop_loading()
+                self._current_browser.url = self._url_input.text
+            elif self._current_browser.is_loading:
+                self._current_browser.stop_loading()
             else:
-                print(dir(self.__current_browser))
-                self.__current_browser.reload()
+                print(dir(self._current_browser))
+                self._current_browser.reload()
         self._load_button.bind(on_press=on_load_button)
         self.__control_bar_grid.add_widget(self._back_button)
         self.__control_bar_grid.add_widget(self._forward_button)
         self.__control_bar_grid.add_widget(self._url_input)
         self.__control_bar_grid.add_widget(self._load_button)
-        self.__current_browser = CEFBrowser()
+        self._current_browser = CEFBrowser()
         self.add_widget(gl)
         self.add_widget(self.__control_bar_grid)
-        self.add_widget(self.__current_browser)
+        self.add_widget(self._current_browser)
         self.select_first_tab()
     
     def select_first_tab(self):
@@ -196,17 +196,17 @@ class TabbedCEFBrowser(GridLayout):
             if self._url_input.focus:
                 self._url_input.select_all()
         try:
-            self.__current_browser.unbind(url=url_input_set_text)
+            self._current_browser.unbind(url=url_input_set_text)
         except:
             pass
         def old_tab_remove_keyboard(browser, *largs):
             browser.release_keyboard()
-        Clock.schedule_once(functools.partial(old_tab_remove_keyboard, self.__current_browser))
-        self.remove_widget(self.__current_browser)
+        Clock.schedule_once(functools.partial(old_tab_remove_keyboard, self._current_browser))
+        self.remove_widget(self._current_browser)
         self._url_input.text = new_tab.url
-        self.__current_browser = new_tab.cef_browser
-        self.add_widget(self.__current_browser)
-        self.__current_browser.bind(url=url_input_set_text)
+        self._current_browser = new_tab.cef_browser
+        self.add_widget(self._current_browser)
+        self._current_browser.bind(url=url_input_set_text)
 
 if __name__ == '__main__':
     class CEFApp(App):
