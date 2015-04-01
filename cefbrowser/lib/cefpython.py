@@ -233,19 +233,16 @@ def cefpython_initialize(CEFBrowser):
         "browser_subprocess_path": os.path.join(md, SUBPROCESS),
         "unique_request_context_per_browser": True,
     }
+    default_settings.update(CEFBrowser._settings)
     caches_path = os.path.join(md, "caches")
     cookies_path = os.path.join(md, "cookies")
     logs_path = os.path.join(md, "logs")
-    if CEFBrowser.data_path and os.path.isdir(os.path.dirname(CEFBrowser.data_path)):
-        caches_path = os.path.join(CEFBrowser.data_path, "caches")
-        cookies_path = os.path.join(CEFBrowser.data_path, "cookies")
-        logs_path = os.path.join(CEFBrowser.data_path, "logs")
-    if CEFBrowser.caches_path and os.path.isdir(os.path.dirname(CEFBrowser.caches_path)):
-        caches_path = CEFBrowser.caches_path
-    if CEFBrowser.cookies_path and os.path.isdir(os.path.dirname(CEFBrowser.cookies_path)):
-        cookies_path = CEFBrowser.cookies_path
-    if CEFBrowser.logs_path and os.path.isdir(os.path.dirname(CEFBrowser.logs_path)):
-        logs_path = CEFBrowser.logs_path
+    if CEFBrowser._caches_path and os.path.isdir(os.path.dirname(CEFBrowser._caches_path)):
+        caches_path = CEFBrowser._caches_path
+    if CEFBrowser._cookies_path and os.path.isdir(os.path.dirname(CEFBrowser._cookies_path)):
+        cookies_path = CEFBrowser._cookies_path
+    if CEFBrowser._logs_path and os.path.isdir(os.path.dirname(CEFBrowser._logs_path)):
+        logs_path = CEFBrowser._logs_path
     Logger.debug("CEFLoader: Caches path: %s", caches_path)
     Logger.debug("CEFLoader: Cookies path: %s", cookies_path)
     Logger.debug("CEFLoader: Logs path: %s", logs_path)
@@ -259,13 +256,13 @@ def cefpython_initialize(CEFBrowser):
     default_settings["log_file"] = os.path.join(logs_path, "cefpython.log")
 
     try:
-        cefpython.Initialize(default_settings)
+        cefpython.Initialize(default_settings, CEFBrowser._command_line_switches)
     except Exception as err:
         del default_settings["debug"]
         cefpython.g_debug = True
         cefpython.g_debugFile = "debug.log"
         try:
-            cefpython.Initialize(default_settings)
+            cefpython.Initialize(default_settings, CEFBrowser._command_line_switches)
         except Exception as err:
             raise Exception("CEFLoader: Failed to initialize cefpython %s", err)
 

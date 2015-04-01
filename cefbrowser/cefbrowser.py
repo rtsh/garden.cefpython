@@ -27,38 +27,12 @@ cef_browser_js_alert = Factory.CEFBrowserJSAlert()
 cef_browser_js_confirm = Factory.CEFBrowserJSConfirm()
 cef_browser_js_prompt = Factory.CEFBrowserJSPrompt()
 
+class CEFAlreadyInitialized(Exception):
+    pass
+
 class CEFBrowser(Widget):
     """Displays a Browser"""
     # Class Variables
-    caches_path = None
-    """ The string `caches_path` class variable is the path to a read- and
-    writeable location where CEF can store its run-time caches.
-    If `caches_path` is None or has no parent directory, the value from 
-    `data_path` is used.
-    TODO: There should be a warning when changing this after Initialize"""
-    cookies_path = None
-    """ The string `cookies_path` class variable is the path to a read- and
-    writeable location where CEF can store its run-time cookies.
-    If `cookies_path` is None or has no parent directory, the value from 
-    `data_path` is used.
-    TODO: There should be a warning when changing this after Initialize"""
-    logs_path = None
-    """ The string `logs_path` class variable is the path to a read- and
-    writeable location where CEF can write its log.
-    If `logs_path` is None or has no parent directory, the value from 
-    `data_path` is used.
-    TODO: There should be a warning when changing this after Initialize"""
-    data_path = None
-    """ The string `data_path` class variable is the path to a read- and
-    writeable location where CEF can write its run-time data:
-    - caches to '`data_path`/cache'
-    - cookies to '`data_path`/cookies'
-    - logs to '`data_path`/log.txt'
-    This is ONLY taken into account, if `caches_path`, `cookies_path` or
-    `logs_path` is not set
-    If `data_path` is None or has no parent directory, the default paths for
-    caches, cookies and logs are in the module directory by default.
-    TODO: There should be a warning when changing this after Initialize"""
     certificate_error_handler = None
     """The value of the `certificate_error_handler` class variable is a
     function that handles certificate errors.
@@ -70,6 +44,11 @@ class CEFBrowser(Widget):
     If `certificate_error_handler` is None or cannot be executed, the default
     is False."""
     _cefpython_initialized = False
+    _command_line_switches = {}
+    _settings = {}
+    _caches_path = None
+    _cookies_path = None
+    _logs_path = None
     
     # Instance Variables
     url = StringProperty("about:blank")
@@ -166,6 +145,62 @@ class CEFBrowser(Widget):
         self.bind(size=self._realign)
         self.bind(pos=self._realign)
         self._bind_js()
+
+    @classmethod
+    def update_command_line_switches(cls, d):
+        """ Updates the command line switches for cefpython with the options given in the dict `d`.
+        For possible keys and values, see the cefpython docs."""
+        if CEFBrowser._cefpython_initialized:
+            raise CEFAlreadyInitialized()
+        CEFBrowser._command_line_switches.update(d)
+        Logger.debug("update_command_line_switches => %s", CEFBrowser._command_line_switches)
+        print "update_command_line_switches", cls._command_line_switches
+
+    @classmethod
+    def update_settings(cls, d):
+        """ Updates the settings for cefpython with the options given in the dict `d`.
+        For possible keys and values, see the cefpython docs."""
+        if CEFBrowser._cefpython_initialized:
+            raise CEFAlreadyInitialized()
+        CEFBrowser._settings.update(d)
+        Logger.debug("update_settings => %s", CEFBrowser._settings)
+
+    @classmethod
+    def set_caches_path(cls, cp):
+        """ The string `cp` is the path to a read- and writeable location where CEF can store its run-time caches."""
+        if CEFBrowser._cefpython_initialized:
+            raise CEFAlreadyInitialized()
+        CEFBrowser._caches_path = cp
+        Logger.debug("caches_path: %s\n cookies_path: %s\n logs_path: %s", CEFBrowser._caches_path, CEFBrowser._cookies_path, CEFBrowser._logs_path)
+
+    @classmethod
+    def set_cookies_path(cls, cp):
+        """ The string `cp` is the path to a read- and writeable location where CEF can store its run-time cookies."""
+        if CEFBrowser._cefpython_initialized:
+            raise CEFAlreadyInitialized()
+        CEFBrowser._cookies_path = cp
+        Logger.debug("caches_path: %s\n cookies_path: %s\n logs_path: %s", CEFBrowser._caches_path, CEFBrowser._cookies_path, CEFBrowser._logs_path)
+
+    @classmethod
+    def set_logs_path(cls, lp):
+        """ The string `lp` is the path to a read- and writeable location where CEF can write its log."""
+        if CEFBrowser._cefpython_initialized:
+            raise CEFAlreadyInitialized()
+        CEFBrowser._logs_path = lp
+        Logger.debug("caches_path: %s\n cookies_path: %s\n logs_path: %s", CEFBrowser._caches_path, CEFBrowser._cookies_path, CEFBrowser._logs_path)
+
+    @classmethod
+    def set_data_path(cls, dp):
+        """ The string `dp` class variable is the path to a read- and writeable location where CEF can write its run-time data:
+        - caches to '`dp`/cache'
+        - cookies to '`dp`/cookies'
+        - logs to '`dp`/log.txt'"""
+        if CEFBrowser._cefpython_initialized:
+            raise CEFAlreadyInitialized()
+        CEFBrowser._caches_path = os.path.join(dp, "caches")
+        CEFBrowser._cookies_path = os.path.join(dp, "cookies")
+        CEFBrowser._logs_path = os.path.join(dp, "logs")
+        Logger.debug("\ncaches_path: %s\n cookies_path: %s\n logs_path: %s", CEFBrowser._caches_path, CEFBrowser._cookies_path, CEFBrowser._logs_path)
 
     def _bind_js(self):
         # When browser.Navigate() is called, some bug appears in CEF
