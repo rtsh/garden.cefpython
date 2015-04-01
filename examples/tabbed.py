@@ -84,13 +84,15 @@ class TabbedCEFBrowserTab(GridLayout):
         self.__cef_browser.close_handler = close_tab_handler
         self.__cef_browser.bind(url=self.setter("url"))
         self.__cef_browser.bind(title=self.setter("text"))
-        def load_button_x(browser, *largs):
+        def on_load_start(browser, *largs):
             self.__tabbed_cef_browser._load_button.text = "Go" if self.__tabbed_cef_browser._url_input.focus else "x"
-        def load_button_r(browser, *largs):
+        def on_load_end(browser, *largs):
             self.__tabbed_cef_browser._load_button.text = "Go" if self.__tabbed_cef_browser._url_input.focus else "r"
-        self.__cef_browser.bind(on_load_start=load_button_x)
-        self.__cef_browser.bind(on_load_end=load_button_r)
-        self.__cef_browser.bind(on_load_error=load_button_r)
+            self.__tabbed_cef_browser._back_button.text = "<" if self.__tabbed_cef_browser.__current_browser.can_go_back else "-"
+            self.__tabbed_cef_browser._forward_button.text = ">" if self.__tabbed_cef_browser.__current_browser.can_go_forward else "-"
+        self.__cef_browser.bind(on_load_start=on_load_start)
+        self.__cef_browser.bind(on_load_end=on_load_end)
+        self.__cef_browser.bind(on_load_error=on_load_end)
 
 class TabbedCEFBrowser(GridLayout):
     def __init__(self, urls=["http://www.rentouch.ch"], *largs, **dargs):
@@ -120,7 +122,13 @@ class TabbedCEFBrowser(GridLayout):
         gl.add_widget(self.__tab_bar_new)
         self.__control_bar_grid = GridLayout(rows=1, size_hint=(1, None), height=controls_size)
         self._back_button = Button(text="<", font_size=controls_size/2, size_hint=(None, 1), width=controls_size)
+        def on_back_press(back_button):
+            self.__current_browser.go_back()
+        self._back_button.bind(on_press=on_back_press)
         self._forward_button = Button(text=">", font_size=controls_size/2, size_hint=(None, 1), width=controls_size)
+        def on_forward_press(forward_button):
+            self.__current_browser.go_forward()
+        self._forward_button.bind(on_press=on_forward_press)
         self._url_input = TextInput(text="http://", font_size=controls_size/2, size_hint=(1, 1), multiline=False)
         def on_url_focus(url_input, new_focus):
             if new_focus:
@@ -212,7 +220,7 @@ if __name__ == '__main__':
             self.tb = TabbedCEFBrowser(urls=["http://jegger.ch/datapool/app/test_popup.html", "http://kivy.org",
                 "https://github.com/kivy-garden/garden.cefpython", 
                 "http://code.google.com/p/cefpython/",
-                "http://code.google.com/p/chromiumembedded/"], pos=(20,10), size_hint=(None, None), size=(Window.width-40, Window.height-20))
+                "http://code.google.com/p/chromiumembedded/", "about:blank"], pos=(20,10), size_hint=(None, None), size=(Window.width-40, Window.height-20))
             return self.tb
 
     CEFApp().run()

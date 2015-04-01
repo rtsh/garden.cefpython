@@ -198,7 +198,8 @@ class CEFBrowser(Widget):
         """
         if CEFBrowser._cefpython_initialized:
             raise CEFAlreadyInitialized()
-        os.mkdir(dp, 0700)
+        if not os.path.isdir(dp):
+            os.mkdir(dp, 0700)
         CEFBrowser._caches_path = os.path.join(dp, "caches")
         CEFBrowser._cookies_path = os.path.join(dp, "cookies")
         CEFBrowser._logs_path = os.path.join(dp, "logs")
