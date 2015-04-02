@@ -48,4 +48,3 @@ Contribute
 ----------
 
 - Test on all operating systems and file bug reports
-- 
