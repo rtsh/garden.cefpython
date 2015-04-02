@@ -402,13 +402,10 @@ class CEFBrowser(Widget):
         x_start = touch.opos[0] - self.pos[0]
         y_start = self.height-touch.opos[1] + self.pos[1]
 
-        dx_start = touch.opos[0]-touch.x  # Delta since touch down
-        dy_start = touch.opos[1]-touch.y
-
         if len(self._touches) == 1:
             if not touch.is_scrolling or touch.is_right_click:
                 # Dragging
-                if (abs(dx_start) > 5 or abs(dy_start) > 5) or touch.is_dragging:
+                if (abs(touch.dx) > 5 or abs(touch.dy) > 5) or touch.is_dragging:
                     if touch.is_dragging:
                         self._browser.SendMouseMoveEvent(
                             x, y, mouseLeave=False
