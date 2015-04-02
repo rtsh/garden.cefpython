@@ -42,3 +42,10 @@ Known Issues
 - API (Methods of CEFBrowser) *will* still be subject to change
 - Keyboards sometimes don't vanish, when another element is focused, system
     keyboard input is sometimes redirected to multiple focused elements, etc.
+
+
+Contribute
+----------
+
+- Test on all operating systems and file bug reports
+- 
