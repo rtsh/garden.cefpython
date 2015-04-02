@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-'''
+"""
 The CEFBrowser Widget actually displays the browser. It displays ONLY the
 browser. If you need controls or tabs, check out the `examples`
-'''
+"""
 
-__all__ = ('CEFBrowser')
+__all__ = ("CEFBrowser")
 
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
@@ -21,6 +21,7 @@ from cefkeyboard import CEFKeyboardManager
 import json
 import os
 import random
+import time
 
 
 Builder.load_file(os.path.join(os.path.realpath(os.path.dirname(__file__)), "cefbrowser.kv"))
@@ -127,7 +128,7 @@ class CEFBrowser(Widget):
         self.register_event_type("on_js_dialog")
         self.register_event_type("on_before_unload_dialog")
 
-        self._texture = Texture.create(size=self.size, colorfmt='rgba', bufferfmt='ubyte')
+        self._texture = Texture.create(size=self.size, colorfmt="rgba", bufferfmt="ubyte")
         self._texture.flip_vertical()
         with self.canvas:
             Color(1, 1, 1)
@@ -211,7 +212,7 @@ class CEFBrowser(Widget):
         ss = self.size
         schg = (ts[0]!=ss[0] or ts[1]!=ss[1])
         if schg:
-            self._texture = Texture.create(size=self.size, colorfmt='rgba', bufferfmt='ubyte')
+            self._texture = Texture.create(size=self.size, colorfmt="rgba", bufferfmt="ubyte")
             self._texture.flip_vertical()
         if self.__rect:
             with self.canvas:
@@ -482,7 +483,7 @@ class CEFBrowserPopup(Widget):
         super(CEFBrowserPopup, self).__init__()
         self.browser_widget = browser_widget
         self.__rect = None
-        self._texture = Texture.create(size=self.size, colorfmt='rgba', bufferfmt='ubyte')
+        self._texture = Texture.create(size=self.size, colorfmt="rgba", bufferfmt="ubyte")
         self._texture.flip_vertical()
         with self.canvas:
             Color(1, 1, 1)
@@ -499,7 +500,7 @@ class CEFBrowserPopup(Widget):
         ss = self.size
         schg = (ts[0]!=ss[0] or ts[1]!=ss[1])
         if schg:
-            self._texture = Texture.create(size=self.size, colorfmt='rgba', bufferfmt='ubyte')
+            self._texture = Texture.create(size=self.size, colorfmt="rgba", bufferfmt="ubyte")
             self._texture.flip_vertical()
         if self.__rect:
             with self.canvas:
@@ -656,7 +657,7 @@ class ClientHandler():
     def OnBeforePopup(self, browser, frame, target_url, target_frame_name, popup_features, window_info, client, browser_settings, *largs):
         Logger.debug("CEFBrowser: OnBeforePopup\n\tBrowser: %s\n\tFrame: %s\n\tURL: %s\n\tFrame Name: %s\n\tPopup Features: %s\n\tWindow Info: %s\n\tClient: %s\n\tBrowser Settings: %s\n\tRemaining Args: %s", browser, frame, target_url, target_frame_name, popup_features, window_info, client, browser_settings, largs)
         bw = self.browser_widgets[browser]
-        if hasattr(bw.popup_policy, '__call__'):
+        if hasattr(bw.popup_policy, "__call__"):
             try:
                 allow_popup = bw.popup_policy(bw, target_url)
                 Logger.info("CEFBrowser: Popup policy handler "+("allowed" if allow_popup else "blocked")+" popup")
@@ -685,7 +686,7 @@ class ClientHandler():
     def DoClose(self, browser):
         bw = self.browser_widgets[browser]
         bw.release_keyboard()
-        if hasattr(bw.close_handler, '__call__'):
+        if hasattr(bw.close_handler, "__call__"):
             try:
                 bw.close_handler(bw)
             except Exception as err:
@@ -853,18 +854,18 @@ __kivy__updateRectTimer = window.setTimeout(__kivy__updateRect, 1000);
         bw._popup.size = (rect[2], rect[3])
 
     def OnPaint(self, browser, paintElementType, dirtyRects, buf, width, height):
-        #print("ON PAINT", browser)
-        b = buf.GetString(mode="rgba", origin="top-left")
+        #print("ON PAINT", browser, time.time())
+        b = buf.GetString(mode="bgra", origin="top-left")
         bw = self.browser_widgets[browser]
         if paintElementType != cefpython.PET_VIEW:
             if bw._popup._texture.width*bw._popup._texture.height*4!=len(b):
                 return True  # prevent segfault
-            bw._popup._texture.blit_buffer(b, colorfmt='rgba', bufferfmt='ubyte')
+            bw._popup._texture.blit_buffer(b, colorfmt="bgra", bufferfmt="ubyte")
             bw._popup._update_rect()
             return True
         if bw._texture.width*bw._texture.height*4!=len(b):
             return True  # prevent segfault
-        bw._texture.blit_buffer(b, colorfmt='rgba', bufferfmt='ubyte')
+        bw._texture.blit_buffer(b, colorfmt="bgra", bufferfmt="ubyte")
         bw._update_rect()
         return True
 
@@ -921,7 +922,7 @@ def OnAfterCreated(browser):
                 bw = client_handler.browser_widgets[parent_browser]
         if not bw:
             bw = client_handler.browser_widgets[client_handler.browser_widgets.iterkeys().next()]
-        if hasattr(bw.popup_handler, '__call__'):
+        if hasattr(bw.popup_handler, "__call__"):
             try:
                 bw.popup_handler(bw, cb)
             except Exception as err:
@@ -945,7 +946,7 @@ def OnCertificateError(err, url, cb):
             Logger.warning("CEFBrowser: Error in certificate error handler.\n%s", err)
 cefpython.SetGlobalClientCallback("OnCertificateError", OnCertificateError)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import os
     from kivy.app import App
     from kivy.clock import Clock
@@ -986,7 +987,7 @@ if __name__ == '__main__':
                 popup_browser.popup_handler = popup_handler
                 popup_browser.close_handler = close_handler
                 pw.add_widget(popup_browser)
-            self.cb1 = CEFBrowser(url='http://jegger.ch/datapool/app/test_popup.html', pos=(0,0), size=(wid-1, hei-100))
+            self.cb1 = CEFBrowser(url="http://jegger.ch/datapool/app/test_popup.html", pos=(0,0), size=(wid-1, hei-100))
             self.cb1.popup_policy = popup_policy_handler
             self.cb1.popup_handler = popup_handler
             self.cb1.close_handler = close_handler
