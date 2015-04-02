@@ -469,11 +469,11 @@ class CEFBrowser(Widget):
             if touch.is_dragging:
                 # Drag end (mouse up)
                 self._browser.SendMouseClickEvent(
-                    touch.ppos[0], touch.ppos[1],
+                    touch.ppos[0], self.height-touch.ppos[1] + self.pos[1],
                     cefpython.MOUSEBUTTON_LEFT,
                     mouseUp=True, clickCount=1
                 )
-                print("Mouse up (end if drag)")
+                print("Mouse up (end of drag)")
             elif not touch.is_right_click and not touch.is_scrolling:
                 # Left click (mouse down, mouse up)
                 count = 1
