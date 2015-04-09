@@ -411,7 +411,6 @@ class CEFBrowser(Widget):
                         self._browser.SendMouseMoveEvent(
                             x, y, 16, mouseLeave=False
                         )
-                        print("Mouse move (drag)")
                     else:
                         self._browser.SendMouseClickEvent(
                             x_start, y_start, 0, cefpython.MOUSEBUTTON_LEFT,
