@@ -409,12 +409,12 @@ class CEFBrowser(Widget):
                 if (abs(touch.dx) > 5 or abs(touch.dy) > 5) or touch.is_dragging:
                     if touch.is_dragging:
                         self._browser.SendMouseMoveEvent(
-                            x, y, mouseLeave=False
+                            x, y, 16, mouseLeave=False
                         )
-                        print("Mouse move")
+                        print("Mouse move (drag)")
                     else:
                         self._browser.SendMouseClickEvent(
-                            x_start, y_start, cefpython.MOUSEBUTTON_LEFT,
+                            x_start, y_start, 0, cefpython.MOUSEBUTTON_LEFT,
                             mouseUp=False, clickCount=1
                         )
                         print("Mouse down")
@@ -428,10 +428,10 @@ class CEFBrowser(Widget):
             if (abs(dx) > 5 or abs(dy) > 5) or touch.is_scrolling:
                 # Check all touches for a certain state
                 for _touch in self._touches:
-                    if _touch.is_dragging:
+                    if _touch.is_draggilibffmpegsumo.song:
                         # End the drag event by releasing the mouse button
                         self._browser.SendMouseClickEvent(
-                            _touch.ppos[0], _touch.ppos[1],
+                            _touch.ppos[0], _touch.ppos[1], 0,
                             cefpython.MOUSEBUTTON_LEFT, mouseUp=True,
                             clickCount=1
                         )
@@ -440,7 +440,7 @@ class CEFBrowser(Widget):
                     # Set touch state to scrolling
                     _touch.is_scrolling = True
                 self._browser.SendMouseWheelEvent(
-                    touch.x, self.height-touch.pos[1], dx, -dy
+                    touch.x, self.height-touch.pos[1], 0, dx, -dy
                 )
                 print("Mouse scroll")
         return True
@@ -457,11 +457,11 @@ class CEFBrowser(Widget):
                 # Right click (mouse down, mouse up)
                 self._touches[0].is_right_click = self._touches[1].is_right_click = True
                 self._browser.SendMouseClickEvent(
-                    x, y, cefpython.MOUSEBUTTON_RIGHT,
+                    x, y, 0, cefpython.MOUSEBUTTON_RIGHT,
                     mouseUp=False, clickCount=1
                 )
                 self._browser.SendMouseClickEvent(
-                    x, y, cefpython.MOUSEBUTTON_RIGHT,
+                    x, y, 0, cefpython.MOUSEBUTTON_RIGHT,
                     mouseUp=True, clickCount=1
                 )
                 print("Mouse right click")
@@ -469,7 +469,7 @@ class CEFBrowser(Widget):
             if touch.is_dragging:
                 # Drag end (mouse up)
                 self._browser.SendMouseClickEvent(
-                    touch.ppos[0], self.height-touch.ppos[1] + self.pos[1],
+                    touch.ppos[0], self.height-touch.ppos[1] + self.pos[1], 0,
                     cefpython.MOUSEBUTTON_LEFT,
                     mouseUp=True, clickCount=1
                 )
@@ -480,14 +480,12 @@ class CEFBrowser(Widget):
                 if touch.is_double_tap:
                     count = 2
                 self._browser.SendMouseClickEvent(
-                    x,
-                    y,
+                    x, y, 0, 
                     cefpython.MOUSEBUTTON_LEFT,
                     mouseUp=False, clickCount=count
                 )
                 self._browser.SendMouseClickEvent(
-                    x,
-                    y,
+                    x, y, 0, 
                     cefpython.MOUSEBUTTON_LEFT,
                     mouseUp=True, clickCount=count
                 )
