@@ -428,7 +428,7 @@ class CEFBrowser(Widget):
             if (abs(dx) > 5 or abs(dy) > 5) or touch.is_scrolling:
                 # Check all touches for a certain state
                 for _touch in self._touches:
-                    if _touch.is_draggilibffmpegsumo.song:
+                    if _touch.is_dragging:
                         # End the drag event by releasing the mouse button
                         self._browser.SendMouseClickEvent(
                             _touch.ppos[0], _touch.ppos[1], 0,
