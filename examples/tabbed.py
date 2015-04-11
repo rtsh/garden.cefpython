@@ -40,9 +40,6 @@ class TabbedCEFBrowserTab(GridLayout):
         self.__tabbed_cef_browser = tabbed_cef_browser
         self.url = url
         self.text = text
-        if cef_browser:
-            self.__cef_browser = cef_browser
-            self.__configure_cef_browser()
         self.__toggle_button = ToggleButton(text=text, group="tabs", font_size=controls_size/2, size_hint=(1, 1), text_size=(controls_size*10, controls_size), shorten=True, shorten_from="right", valign="middle", padding_x=5)
         self.__toggle_button.bind(size=self.__toggle_button.setter("text_size"))
         self.add_widget(self.__toggle_button)
@@ -60,6 +57,9 @@ class TabbedCEFBrowserTab(GridLayout):
         def on_text(self, new_text):
             self.__toggle_button.text = new_text
         self.bind(text=on_text)
+        if cef_browser:
+            self.__cef_browser = cef_browser
+            self.__configure_cef_browser()
     
     def select(self):
         self.__toggle_button.trigger_action()
@@ -150,7 +150,6 @@ class TabbedCEFBrowser(GridLayout):
             elif self._current_browser.is_loading:
                 self._current_browser.stop_loading()
             else:
-                print(dir(self._current_browser))
                 self._current_browser.reload()
         self._load_button.bind(on_press=on_load_button)
         self.__control_bar_grid.add_widget(self._back_button)
@@ -200,7 +199,8 @@ class TabbedCEFBrowser(GridLayout):
         except:
             pass
         def old_tab_remove_keyboard(browser, *largs):
-            browser.release_keyboard()
+            print "old_tab_remove_keyboard", browser
+            browser.focus = False
         Clock.schedule_once(functools.partial(old_tab_remove_keyboard, self._current_browser))
         self.remove_widget(self._current_browser)
         self._url_input.text = new_tab.url
@@ -211,12 +211,12 @@ class TabbedCEFBrowser(GridLayout):
 if __name__ == '__main__':
     class CEFApp(App):
         def timeout(self, *largs):
+            print "TABBED: Timeout over"
             tb = self.tb
-            tb.__tab_bar_height = 26
-            tb.tabs[tb.selected_tab]["browser"].navigation_bar_hei = 26
+            tb.height -= 100
             
         def build(self):
-            #Clock.schedule_once(self.timeout, 5)
+            Clock.schedule_once(self.timeout, 15)
             self.tb = TabbedCEFBrowser(urls=["http://jegger.ch/datapool/app/test_popup.html", "http://kivy.org",
                 "https://github.com/kivy-garden/garden.cefpython", 
                 "http://code.google.com/p/cefpython/",
@@ -224,6 +224,4 @@ if __name__ == '__main__':
             return self.tb
 
     CEFApp().run()
-
-    cefpython.Shutdown()
 

@@ -14,6 +14,7 @@ from kivy.factory import Factory
 from kivy.lang import Builder
 from kivy.logger import Logger
 from kivy.properties import *
+from kivy.uix.behaviors import FocusBehavior
 from kivy.uix.widget import Widget
 from lib.cefpython import cefpython, cefpython_initialize
 from cefkeyboard import CEFKeyboardManager
@@ -32,7 +33,7 @@ cef_browser_js_prompt = Factory.CEFBrowserJSPrompt()
 class CEFAlreadyInitialized(Exception):
     pass
 
-class CEFBrowser(Widget):
+class CEFBrowser(Widget, FocusBehavior):
     """Displays a Browser"""
     # Class Variables
     certificate_error_handler = None
@@ -107,8 +108,8 @@ class CEFBrowser(Widget):
     _browser = None
     _popup = None
     _texture = None
-    __keyboard = None
     __rect = None
+    __keyboard_state = {}
 
     def __init__(self, url="about:blank", *largs, **dargs):
         self.url = url
@@ -146,6 +147,7 @@ class CEFBrowser(Widget):
         self._browser.WasResized()
         self.bind(size=self._realign)
         self.bind(pos=self._realign)
+        self.bind(parent=self._on_parent)
         self.js._inject()
 
     @classmethod
@@ -225,12 +227,15 @@ class CEFBrowser(Widget):
         if self._browser:
             self._browser.WasResized()
             self._browser.NotifyScreenInfoChanged()
-        # Bring keyboard to front
         try:
-            k = self.__keyboard.widget
-            p = k.parent
-            p.remove_widget(k)
-            p.add_widget(k)
+            self._keyboard_update(**self.__keyboard_state)
+        except:
+            pass
+
+    def _on_parent(self, parent, *largs):
+        print "_on_parent", parent, largs, self.__keyboard_state
+        try:
+            self._keyboard_update(**self.__keyboard_state)
         except:
             pass
 
@@ -290,31 +295,14 @@ class CEFBrowser(Widget):
         :param rect: [x,y,width,height] of the input element
         :param attributes: Attributes of HTML element
         """
-        if shown:
-            self.request_keyboard(rect, attributes)
+        self.__keyboard_state = {"shown":shown, "rect":rect, "attributes":attributes}
+        print("KB", self, self.__keyboard_state, self.parent, rect, attributes)
+        if shown and self.parent: # No orphaned keyboards
+            self.focus = True
+            self.keyboard_position(self, self.keyboard.widget, rect, attributes)
         else:
-            self.release_keyboard()
-
-    def request_keyboard(self, rect=None, attributes={}):
-        print("REQUEST KB", rect, attributes)
-        if not self.__keyboard:
-            self.__keyboard = Window.request_keyboard(
-                    self.release_keyboard, self)
-            self.__keyboard.bind(on_key_down=self.on_key_down)
-            self.__keyboard.bind(on_key_up=self.on_key_up)
-        kw = self.__keyboard.widget
-        self.keyboard_position(self, kw, rect, attributes)
-        CEFKeyboardManager.reset_all_modifiers()
-
-    def release_keyboard(self, *kwargs):
-        print("RELEASE KB")
-        CEFKeyboardManager.reset_all_modifiers()
-        if not self.__keyboard:
-            return
-        self.__keyboard.unbind(on_key_down=self.on_key_down)
-        self.__keyboard.unbind(on_key_up=self.on_key_up)
-        self.__keyboard.release()
-        self.__keyboard = None
+            self.focus = False
+        # CEFKeyboardManager.reset_all_modifiers() # TODO: necessary?
 
     @classmethod
     def keyboard_position_simple(cls, browser, keyboard_widaget, rect, attributes):
@@ -367,19 +355,17 @@ class CEFBrowser(Widget):
         """
         return False
 
-    def on_key_down(self, *largs):
+    def keyboard_on_key_down(self, *largs):
         print("KEY DOWN", largs)
         CEFKeyboardManager.kivy_on_key_down(self._browser, *largs)
 
-    def on_key_up(self, *largs):
+    def keyboard_on_key_up(self, *largs):
         print("KEY UP", largs)
         CEFKeyboardManager.kivy_on_key_up(self._browser, *largs)
 
     def on_touch_down(self, touch, *kwargs):
         if not self.collide_point(*touch.pos):
             return
-
-        Window.release_all_keyboards()
 
         # Do not support more than two touches!
         if len(self._touches) > 2:
@@ -707,7 +693,7 @@ class ClientHandler():
 
     def DoClose(self, browser):
         bw = self.browser_widgets[browser]
-        bw.release_keyboard()
+        bw.focus = False
         if hasattr(bw.close_handler, "__call__"):
             try:
                 bw.close_handler(bw)
@@ -728,6 +714,7 @@ class ClientHandler():
     def OnLoadStart(self, browser, frame):
         bw = self.browser_widgets[browser]
         bw.dispatch("on_load_start", frame)
+        bw.focus = False
         if bw:
             bw._browser.SendFocusEvent(True)
             jsCode = """
@@ -972,7 +959,6 @@ if __name__ == "__main__":
     import os
     from kivy.app import App
     from kivy.clock import Clock
-    from kivy.uix.behaviors import FocusBehavior
     from kivy.uix.button import Button
     from kivy.uix.textinput import TextInput
     cef_test_url = "file://"+os.path.join(os.path.dirname(os.path.realpath(__file__)), "test.html")
