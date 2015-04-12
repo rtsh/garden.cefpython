@@ -97,10 +97,10 @@ class CEFBrowser(Widget, FocusBehavior):
     positioning of the keyboard on focusing a keyboard element in the browser.
     It takes 1 argument:
     - `browser`: The browser in which the element was focused
-    - `keyboard_widaget`: The keyboard widget
+    - `keyboard_widget`: The keyboard widget
     - `rect`: The rectangle the focused element takes *within* the browser
     - `attributes`: The HTML attributes of the focused element
-    It should set `keyboard_widaget.pos` to the desired value
+    It should set `keyboard_widget.pos` to the desired value
     If `close_handler` is None, cannot be executed or doesn't remove `browser`
     from the widget tree, the default is to just leave the keyboard widget
     where it is."""
@@ -148,6 +148,7 @@ class CEFBrowser(Widget, FocusBehavior):
         self.bind(size=self._realign)
         self.bind(pos=self._realign)
         self.bind(parent=self._on_parent)
+        self.bind(focus=self._on_focus)
         self.js._inject()
 
     @classmethod
@@ -232,12 +233,17 @@ class CEFBrowser(Widget, FocusBehavior):
         except:
             pass
 
-    def _on_parent(self, parent, *largs):
-        print "_on_parent", parent, largs, self.__keyboard_state
+    def _on_parent(self, obj, parent):
+        print "_on_parent", parent, self.__keyboard_state
         try:
             self._keyboard_update(**self.__keyboard_state)
         except:
             pass
+
+    def _on_focus(self, obj, focus):
+        super(CEFBrowser, self)._on_focus(obj, focus)
+        if not focus and self.__keyboard_state["shown"]:
+            self._browser.GetMainFrame().ExecuteJavascript("__kivy__activeKeyboardElement.blur();")
 
     def _update_rect(self):
         if self.__rect:
@@ -305,23 +311,25 @@ class CEFBrowser(Widget, FocusBehavior):
         # CEFKeyboardManager.reset_all_modifiers() # TODO: necessary?
 
     @classmethod
-    def keyboard_position_simple(cls, browser, keyboard_widaget, rect, attributes):
-        if rect and len(rect)==4:
-            keyboard_widaget.pos = (browser.x+rect[0]+(rect[2]-keyboard_widaget.width)/2, browser.y+browser.height-rect[1]-rect[3]-keyboard_widaget.height)
-        else:
-            keyboard_widaget.pos = (browser.x, browser.y)
+    def keyboard_position_simple(cls, browser, keyboard_widget, rect, attributes):
+        if not keyboard_widget.docked:
+            if rect and len(rect)==4:
+                keyboard_widget.pos = (browser.x+rect[0]+(rect[2]-keyboard_widget.width)/2, browser.y+browser.height-rect[1]-rect[3]-keyboard_widget.height)
+            else:
+                keyboard_widget.pos = (browser.x, browser.y)
 
     @classmethod
-    def keyboard_position_optimal(cls, browser, keyboard_widaget, rect, attributes): # TODO: place right, left, etc. see cefkivy
-        cls.keyboard_position_simple(browser, keyboard_widaget, rect, attributes)
-        if Window.width<keyboard_widaget.x+keyboard_widaget.width:
-            keyboard_widaget.x = Window.width-keyboard_widaget.width
-        if keyboard_widaget.x<0:
-            keyboard_widaget.x = 0
-        if Window.height<keyboard_widaget.y+keyboard_widaget.height:
-            keyboard_widaget.y = Window.height-keyboard_widaget.height
-        if keyboard_widaget.y<0:
-            keyboard_widaget.y = 0
+    def keyboard_position_optimal(cls, browser, keyboard_widget, rect, attributes): # TODO: place right, left, etc. see cefkivy
+        if not keyboard_widget.docked:
+            cls.keyboard_position_simple(browser, keyboard_widget, rect, attributes)
+            if Window.width<keyboard_widget.x+keyboard_widget.width:
+                keyboard_widget.x = Window.width-keyboard_widget.width
+            if keyboard_widget.x<0:
+                keyboard_widget.x = 0
+            if Window.height<keyboard_widget.y+keyboard_widget.height:
+                keyboard_widget.y = Window.height-keyboard_widget.height
+            if keyboard_widget.y<0:
+                keyboard_widget.y = 0
 
     @classmethod
     def always_allow_popups(cls, browser, url):
