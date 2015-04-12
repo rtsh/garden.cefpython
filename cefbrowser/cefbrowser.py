@@ -15,6 +15,7 @@ from kivy.lang import Builder
 from kivy.logger import Logger
 from kivy.properties import *
 from kivy.uix.behaviors import FocusBehavior
+from kivy.uix.bubble import Bubble, BubbleButton
 from kivy.uix.widget import Widget
 from lib.cefpython import cefpython, cefpython_initialize
 from cefkeyboard import CEFKeyboardManager
@@ -110,6 +111,7 @@ class CEFBrowser(Widget, FocusBehavior):
     _texture = None
     __rect = None
     __keyboard_state = {}
+    __selection_state = {}
 
     def __init__(self, url="about:blank", *largs, **dargs):
         self.url = url
@@ -302,7 +304,7 @@ class CEFBrowser(Widget, FocusBehavior):
         :param attributes: Attributes of HTML element
         """
         self.__keyboard_state = {"shown":shown, "rect":rect, "attributes":attributes}
-        print("KB", self, self.__keyboard_state, self.parent, rect, attributes)
+        print("KB", self.url, self.__keyboard_state, self.parent)
         if shown and self.parent: # No orphaned keyboards
             self.focus = True
             self.keyboard_position(self, self.keyboard.widget, rect, attributes)
@@ -330,6 +332,32 @@ class CEFBrowser(Widget, FocusBehavior):
                 keyboard_widget.y = Window.height-keyboard_widget.height
             if keyboard_widget.y<0:
                 keyboard_widget.y = 0
+
+    def _selection_update(self, shown, rect, text):
+        """
+        :param shown: Show bubble if true, hide if false (blur)
+        :param rect: [x,y,width,height] of the selection
+        :param text: Text representation of selection content
+        """
+        self.__selection_state.update({"shown":shown, "rect":rect, "text":text})
+        print("SEL", self.url, self.__selection_state, self.parent)
+        ccp_bubble = False
+        if not "bubble" in self.__selection_state:
+            ccp_bubble = CEFBrowserCutCopyPasteBubble(self)
+            def on_cut(*largs):
+                print "cut", largs
+            ccp_bubble.cut = on_cut
+            def on_copy(*largs):
+                print "copy", largs
+            ccp_bubble.copy = on_copy
+            def on_paste(*largs):
+                print "paste", largs
+            ccp_bubble.paste = on_paste
+            Window.add_widget(ccp_bubble)
+            self.__selection_state["bubble"] = ccp_bubble
+        else:
+            ccp_bubble = self.__selection_state["bubble"]
+        ccp_bubble.pos = (self.x+rect[0]+(rect[2]-ccp_bubble.width)/2, self.y+self.height-rect[1])
 
     @classmethod
     def always_allow_popups(cls, browser, url):
@@ -535,7 +563,7 @@ class CEFBrowserJSFunctionProxy():
     def __init__(self, browser_widget, key, *largs):
         self.browser_widget = browser_widget
         self.key = key
-    
+
     def __call__(self, *largs):
         js_code = str(self.key)+"("
         first = True
@@ -551,9 +579,9 @@ class CEFBrowserJSFunctionProxy():
 class CEFBrowserJSProxy():
     def __init__(self, browser_widget, *largs):
         self.browser_widget = browser_widget
-        self.__js_bindings_dict = {"__kivy__keyboard_update":browser_widget._keyboard_update}
+        self.__js_bindings_dict = {"__kivy__keyboard_update":browser_widget._keyboard_update, "__kivy__selection_update":browser_widget._selection_update}
         self.__js_bindings = None
-    
+
     def _inject(self):
         # When browser.Navigate() is called, some bug appears in CEF
         # that makes CefRenderProcessHandler::OnBrowserDestroyed()
@@ -569,15 +597,41 @@ class CEFBrowserJSProxy():
             self.browser_widget._browser.SetJavascriptBindings(self.__js_bindings)
         else:
             self.__js_bindings.Rebind()
-    
+
     def bind(self, **dargs):
         self.__js_bindings_dict.update(dargs)
         self.__js_bindings = None
         self._inject()
-    
+
     def __getattr__(self, key):
         print "getattr", key
         return CEFBrowserJSFunctionProxy(self.browser_widget, key)
+
+class CEFBrowserCutCopyPasteBubble(Bubble):
+    def __init__(self, browser_widget, *largs, **dargs):
+        super(CEFBrowserCutCopyPasteBubble, self).__init__(**dargs)
+        self.browser_widget = browser_widget
+        self.size_hint = (None, None)
+        self.size = (160, 80)
+        #self.pos_hint = {"center_x": .5, "y": .6}
+        self.cutbut = BubbleButton(text="Cut")
+        self.cutbut.bind(on_press=self.on_cut)
+        self.add_widget(self.cutbut)
+        self.copybut = BubbleButton(text="Copy")
+        self.copybut.bind(on_press=self.on_copy)
+        self.add_widget(self.copybut)
+        self.pastebut = BubbleButton(text="Paste")
+        self.pastebut.bind(on_press=self.on_paste)
+        self.add_widget(self.pastebut)
+
+    def on_cut(self, *largs):
+        print "CUT", largs
+
+    def on_copy(self, *largs):
+        print "COPY", largs
+
+    def on_paste(self, *largs):
+        print "PASTE", largs
 
 
 class ClientHandler():
@@ -732,6 +786,7 @@ window.print = function () {
 var __kivy__activeKeyboardElement = false;
 var __kivy__updateRectTimer = false;
 var __kivy__lastRect = [];
+var __kivy__updateSelectionTimer = false;
 
 function __kivy__isKeyboardElement(elem) {
     try {
@@ -824,6 +879,20 @@ if (ae) {
     ae.focus();
 }
 __kivy__updateRectTimer = window.setTimeout(__kivy__updateRect, 1000);
+
+function __kivy__updateSelection() {
+    if (__kivy__updateSelectionTimer) window.clearTimeout(__kivy__updateSelectionTimer);
+    try {
+        var s = window.getSelection();
+        var lrect = __kivy__getRect(s.getRangeAt(0));
+        __kivy__selection_update(true, lrect, s.toString());
+    } catch (err) {
+        console.log(err);
+    }
+    __kivy__updateSelectionTimer = window.setTimeout(__kivy__updateSelection, 1000);
+}
+__kivy__updateSelectionTimer = window.setTimeout(__kivy__updateSelection, 1000);
+
 """
             frame.ExecuteJavascript(jsCode)
 
