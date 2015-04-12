@@ -234,7 +234,7 @@ class CEFBrowser(Widget, FocusBehavior):
             pass
 
     def _on_parent(self, obj, parent):
-        print "_on_parent", parent, self.__keyboard_state
+        self._browser.WasHidden(not parent) # optimize the shit out of CEF
         try:
             self._keyboard_update(**self.__keyboard_state)
         except:
