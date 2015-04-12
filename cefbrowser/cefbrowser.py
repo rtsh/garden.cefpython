@@ -7,6 +7,7 @@ browser. If you need controls or tabs, check out the `examples`
 
 __all__ = ("CEFBrowser")
 
+from kivy.core.clipboard import Clipboard
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 from kivy.graphics.texture import Texture
@@ -109,9 +110,6 @@ class CEFBrowser(Widget, FocusBehavior):
     _browser = None
     _popup = None
     _texture = None
-    __rect = None
-    __keyboard_state = {}
-    __selection_state = {}
 
     def __init__(self, url="about:blank", *largs, **dargs):
         self.url = url
@@ -119,10 +117,13 @@ class CEFBrowser(Widget, FocusBehavior):
         self.popup_handler = dargs.pop("popup_handler", CEFBrowser.fullscreen_popup)
         self.close_handler = dargs.pop("close_handler", CEFBrowser.do_nothing)
         self.keyboard_position = dargs.pop("keyboard_position", CEFBrowser.keyboard_position_optimal)
-        self.js = CEFBrowserJSProxy(self)
         self._browser = dargs.pop("browser", None)
         self._popup = CEFBrowserPopup(self)
+        self._selection_bubble = CEFBrowserCutCopyPasteBubble(self)
         self.__rect = None
+        self.__keyboard_state = {}
+        self.js = CEFBrowserJSProxy(self)
+
         super(CEFBrowser, self).__init__(**dargs)
 
         self.register_event_type("on_load_start")
@@ -332,32 +333,6 @@ class CEFBrowser(Widget, FocusBehavior):
                 keyboard_widget.y = Window.height-keyboard_widget.height
             if keyboard_widget.y<0:
                 keyboard_widget.y = 0
-
-    def _selection_update(self, shown, rect, text):
-        """
-        :param shown: Show bubble if true, hide if false (blur)
-        :param rect: [x,y,width,height] of the selection
-        :param text: Text representation of selection content
-        """
-        self.__selection_state.update({"shown":shown, "rect":rect, "text":text})
-        print("SEL", self.url, self.__selection_state, self.parent)
-        ccp_bubble = False
-        if not "bubble" in self.__selection_state:
-            ccp_bubble = CEFBrowserCutCopyPasteBubble(self)
-            def on_cut(*largs):
-                print "cut", largs
-            ccp_bubble.cut = on_cut
-            def on_copy(*largs):
-                print "copy", largs
-            ccp_bubble.copy = on_copy
-            def on_paste(*largs):
-                print "paste", largs
-            ccp_bubble.paste = on_paste
-            Window.add_widget(ccp_bubble)
-            self.__selection_state["bubble"] = ccp_bubble
-        else:
-            ccp_bubble = self.__selection_state["bubble"]
-        ccp_bubble.pos = (self.x+rect[0]+(rect[2]-ccp_bubble.width)/2, self.y+self.height-rect[1])
 
     @classmethod
     def always_allow_popups(cls, browser, url):
@@ -579,7 +554,7 @@ class CEFBrowserJSFunctionProxy():
 class CEFBrowserJSProxy():
     def __init__(self, browser_widget, *largs):
         self.browser_widget = browser_widget
-        self.__js_bindings_dict = {"__kivy__keyboard_update":browser_widget._keyboard_update, "__kivy__selection_update":browser_widget._selection_update}
+        self.__js_bindings_dict = {"__kivy__keyboard_update":browser_widget._keyboard_update, "__kivy__selection_update":browser_widget._selection_bubble._update}
         self.__js_bindings = None
 
     def _inject(self):
@@ -613,7 +588,6 @@ class CEFBrowserCutCopyPasteBubble(Bubble):
         self.browser_widget = browser_widget
         self.size_hint = (None, None)
         self.size = (160, 80)
-        #self.pos_hint = {"center_x": .5, "y": .6}
         self.cutbut = BubbleButton(text="Cut")
         self.cutbut.bind(on_press=self.on_cut)
         self.add_widget(self.cutbut)
@@ -623,15 +597,52 @@ class CEFBrowserCutCopyPasteBubble(Bubble):
         self.pastebut = BubbleButton(text="Paste")
         self.pastebut.bind(on_press=self.on_paste)
         self.add_widget(self.pastebut)
+        self._options = {}
+        self._rect = [0,0,0,0]
+        self._text = ""
+
+    def _update(self, options, rect, text):
+        """
+        :param options: dict with keys `shown`, `can_cut`, `can_copy`, `can_paste`
+        :param rect: [x,y,width,height] of the selection
+        :param text: Text representation of selection content
+        """
+        print("SEL", self.browser_widget.url, options, rect, text, self.browser_widget.parent)
+        if not self.browser_widget.parent:
+            options["shown"] = False
+        self.pos = (self.browser_widget.x+rect[0]+(rect[2]-self.width)/2, self.browser_widget.y+self.browser_widget.height-rect[1])
+        shown = ("shown" in options and options["shown"])
+        if shown and not self.parent:
+            Window.add_widget(self)
+        if not shown and self.parent:
+            Window.remove_widget(self)
+        self.cutbut.disabled = not ("can_cut" in options and options["can_cut"])
+        self.copybut.disabled = not ("can_copy" in options and options["can_copy"])
+        self.pastebut.disabled = not ("can_paste" in options and options["can_paste"])
+        self._options = options
+        self._rect = rect
+        self._text = text
 
     def on_cut(self, *largs):
-        print "CUT", largs
+        print "CUT", largs, self._text
+        self.on_copy()
 
     def on_copy(self, *largs):
-        print "COPY", largs
+        Clipboard.put(self._text, "UTF8_STRING")
+        Clipboard.put(self._text, "TEXT")
+        Clipboard.put(self._text, "STRING")
+        Clipboard.put(self._text, "text/plain")
 
     def on_paste(self, *largs):
-        print "PASTE", largs
+        t = False
+        for type in Clipboard.get_types():
+            if type in ("UTF8_STRING", "TEXT", "STRING", "text/plain"):
+                try:
+                    t = Clipboard.get(type)
+                    break
+                except:
+                    pass
+        print "PASTE", t
 
 
 class ClientHandler():
@@ -755,6 +766,8 @@ class ClientHandler():
     def DoClose(self, browser):
         bw = self.browser_widgets[browser]
         bw.focus = False
+        if bw._selection_bubble.parent:
+            bw._selection_bubble.parent.remove_widget(bw._selection_bubble)
         if hasattr(bw.close_handler, "__call__"):
             try:
                 bw.close_handler(bw)
@@ -779,14 +792,19 @@ class ClientHandler():
         if bw:
             bw._browser.SendFocusEvent(True)
             jsCode = """
+
+// Dirty Bugfixes
+
 window.print = function () {
     console.log("Print dialog blocked");
 };
 
+
+// Keyboard management
+
 var __kivy__activeKeyboardElement = false;
 var __kivy__updateRectTimer = false;
 var __kivy__lastRect = [];
-var __kivy__updateSelectionTimer = false;
 
 function __kivy__isKeyboardElement(elem) {
     try {
@@ -880,14 +898,32 @@ if (ae) {
 }
 __kivy__updateRectTimer = window.setTimeout(__kivy__updateRect, 1000);
 
+
+// Selection (Cut, Copy, Paste) management
+
+var __kivy__updateSelectionTimer = false;
+
 function __kivy__updateSelection() {
     if (__kivy__updateSelectionTimer) window.clearTimeout(__kivy__updateSelectionTimer);
-    try {
-        var s = window.getSelection();
-        var lrect = __kivy__getRect(s.getRangeAt(0));
-        __kivy__selection_update(true, lrect, s.toString());
-    } catch (err) {
-        console.log(err);
+    if (__kivy__activeKeyboardElement) {
+        var lrect = __kivy__getRect(__kivy__activeKeyboardElement);
+        var sstart = __kivy__activeKeyboardElement.selectionStart;
+        var send = __kivy__activeKeyboardElement.selectionEnd;
+        __kivy__selection_update({"shown":true, "can_cut":(send!=sstart), "can_copy":(send!=sstart), "can_paste":true}, lrect, __kivy__activeKeyboardElement.value.substr(sstart, send-sstart));
+    } else {
+        try {
+            var s = window.getSelection();
+            var r = s.getRangeAt(0);
+            var lrect = __kivy__getRect(r);
+            if (lrect[0]==0 && lrect[1]==0 && lrect[2]==0 && lrect[3]==0) {
+                __kivy__selection_update({"shown":false}, [0,0,0,0], "");
+            } else {
+                __kivy__selection_update({"shown":true, "can_cut":false, "can_copy":true, "can_paste":false}, lrect, s.toString());
+            }
+        } catch (err) {
+            __kivy__selection_update({"shown":false}, [0,0,0,0], "");
+            console.log(err);
+        }
     }
     __kivy__updateSelectionTimer = window.setTimeout(__kivy__updateSelection, 1000);
 }
