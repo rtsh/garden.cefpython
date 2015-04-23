@@ -27,11 +27,6 @@ import random
 import time
 
 
-Builder.load_file(os.path.join(os.path.realpath(os.path.dirname(__file__)), "cefbrowser.kv"))
-cef_browser_js_alert = Factory.CEFBrowserJSAlert()
-cef_browser_js_confirm = Factory.CEFBrowserJSConfirm()
-cef_browser_js_prompt = Factory.CEFBrowserJSPrompt()
-
 class CEFAlreadyInitialized(Exception):
     pass
 
@@ -579,7 +574,6 @@ class CEFBrowserJSProxy():
         self._inject()
 
     def __getattr__(self, key):
-        print "getattr", key
         return CEFBrowserJSFunctionProxy(self.browser_widget, key)
 
 class CEFBrowserCutCopyPasteBubble(Bubble):
@@ -607,7 +601,7 @@ class CEFBrowserCutCopyPasteBubble(Bubble):
         :param rect: [x,y,width,height] of the selection
         :param text: Text representation of selection content
         """
-        print("SEL", self.browser_widget.url, options, rect, text, self.browser_widget.parent)
+        #print("SEL", self.browser_widget.url, options, rect, text, self.browser_widget.parent)
         if not self.browser_widget.parent:
             options["shown"] = False
         self.pos = (self.browser_widget.x+rect[0]+(rect[2]-self.width)/2, self.browser_widget.y+self.browser_widget.height-rect[1])
@@ -688,41 +682,41 @@ class ClientHandler():
     # JavascriptContextHandler
 
     # JavascriptDialogHandler
-    active_js_dialog = None
+    _active_js_dialog = None
 
     def OnJavascriptDialog(self, browser, origin_url, accept_lang, dialog_type, message_text, default_prompt_text, callback, suppress_message, *largs):
         dialog_types = {
-            cefpython.JSDIALOGTYPE_ALERT:["alert", cef_browser_js_alert],
-            cefpython.JSDIALOGTYPE_CONFIRM:["confirm", cef_browser_js_confirm],
-            cefpython.JSDIALOGTYPE_PROMPT:["prompt", cef_browser_js_prompt],
+            cefpython.JSDIALOGTYPE_ALERT:["alert", CEFBrowser._js_alert],
+            cefpython.JSDIALOGTYPE_CONFIRM:["confirm", CEFBrowser._js_confirm],
+            cefpython.JSDIALOGTYPE_PROMPT:["prompt", CEFBrowser._js_prompt],
         }
         print("OnJavascriptDialog", browser, origin_url, accept_lang, dialog_types[dialog_type][0], message_text, default_prompt_text, callback, suppress_message, largs)
         def js_continue(allow, user_input):
-            active_js_dialog = None
+            self._active_js_dialog = None
             callback.Continue(allow, user_input)
         p = dialog_types[dialog_type][1]
         p.text = message_text
         p.js_continue = js_continue
         p.default_prompt_text = default_prompt_text
         p.open()
-        active_js_dialog = p
+        self._active_js_dialog = p
         return True
 
     def OnBeforeUnloadJavascriptDialog(self, browser, message_text, is_reload, callback):
         def js_continue(allow, user_input):
-            active_js_dialog = None
+            self._active_js_dialog = None
             callback.Continue(allow, user_input)
-        p = cef_browser_js_confirm
+        p = CEFBrowser._js_confirm
         p.text = message_text
         p.js_continue = js_continue
         p.default_prompt_text = ""
         p.open()
-        active_js_dialog = p
+        self._active_js_dialog = p
         return True
 
     def OnResetJavascriptDialogState(self, browser):
-        if active_js_dialog:
-            active_js_dialog.dismiss()
+        if self._active_js_dialog:
+            self._active_js_dialog.dismiss()
 
     # KeyboardHandler
 
@@ -824,20 +818,23 @@ function __kivy__isKeyboardElement(elem) {
 
 function __kivy__getAttributes(elem) {
     var attributes = {};
-    for (var att, i = 0, atts = elem.attributes, n = atts.length; i < n; i++) {
-        att = atts[i];
-        attributes[att.nodeName] = att.nodeValue;
+    var atts = elem.attributes;
+    if (atts) {
+        var n = atts.length;
+        for (var i=0; i < n; i++) {
+            var att = atts[i];
+            attributes[att.nodeName] = att.nodeValue;
+        }
     }
     return attributes;
 }
 
-function __kivy__getRect(elem) {
+function __kivy__getRect(elem) { // This takes into account frame position in parent frame recursively
     var w = window;
     var lrect = [0,0,0,0];
     while (elem && w) {
         try {
             var rect = elem.getBoundingClientRect();
-            console.log(rect.left+", "+rect.top+", "+rect.width+", "+rect.height);
             lrect[0] += rect.left;
             lrect[1] += rect.top;
             if (lrect[2]==0) lrect[2] = rect.width;
@@ -845,7 +842,6 @@ function __kivy__getRect(elem) {
             elem = w.frameElement;
             w = w.parent;
         } catch (err) {
-            console.log(err.toString());
             elem = false;
         }
     }
@@ -853,22 +849,19 @@ function __kivy__getRect(elem) {
 }
 
 window.addEventListener("focus", function (e) {
-    var lrect = __kivy__getRect(e.target);
-    var attributes = __kivy__getAttributes(e.target);
     var ike = __kivy__isKeyboardElement(e.target);
-    console.log("focus "+e.target.toString()+JSON.stringify(attributes)+JSON.stringify(ike));
-    __kivy__keyboard_update(ike, lrect, attributes);
     __kivy__activeKeyboardElement = (ike?e.target:false);
-    __kivy__lastRect = lrect;
+    __kivy__lastRect = __kivy__getRect(e.target);
+    var attributes = __kivy__getAttributes(e.target);
+    __kivy__keyboard_update(ike, __kivy__lastRect, attributes);
+    __kivy__updateSelection();
 }, true);
 
 window.addEventListener("blur", function (e) {
-    var lrect = __kivy__getRect(e.target);
-    var attributes = __kivy__getAttributes(e.target);
-    console.log("blur "+e.target.toString()+JSON.stringify(attributes));
-    __kivy__keyboard_update(false, lrect, attributes);
+    __kivy__keyboard_update(false, [], {});
     __kivy__activeKeyboardElement = false;
     __kivy__lastRect = [];
+    __kivy__updateSelection();
 }, true);
 
 function __kivy__updateRect() {
@@ -901,10 +894,7 @@ __kivy__updateRectTimer = window.setTimeout(__kivy__updateRect, 1000);
 
 // Selection (Cut, Copy, Paste) management
 
-var __kivy__updateSelectionTimer = false;
-
 function __kivy__updateSelection() {
-    if (__kivy__updateSelectionTimer) window.clearTimeout(__kivy__updateSelectionTimer);
     if (__kivy__activeKeyboardElement) {
         var lrect = __kivy__getRect(__kivy__activeKeyboardElement);
         var sstart = __kivy__activeKeyboardElement.selectionStart;
@@ -914,20 +904,21 @@ function __kivy__updateSelection() {
         try {
             var s = window.getSelection();
             var r = s.getRangeAt(0);
-            var lrect = __kivy__getRect(r);
-            if (lrect[0]==0 && lrect[1]==0 && lrect[2]==0 && lrect[3]==0) {
+            if (r.startContainer==r.endContainer && r.startOffset==r.endOffset) { // No selection
                 __kivy__selection_update({"shown":false}, [0,0,0,0], "");
             } else {
+                var lrect = __kivy__getRect(r);
                 __kivy__selection_update({"shown":true, "can_cut":false, "can_copy":true, "can_paste":false}, lrect, s.toString());
             }
         } catch (err) {
             __kivy__selection_update({"shown":false}, [0,0,0,0], "");
-            console.log(err);
         }
     }
-    __kivy__updateSelectionTimer = window.setTimeout(__kivy__updateSelection, 1000);
 }
-__kivy__updateSelectionTimer = window.setTimeout(__kivy__updateSelection, 1000);
+
+document.addEventListener("selectionchange", function (e) {
+    __kivy__updateSelection();
+});
 
 """
             frame.ExecuteJavascript(jsCode)
@@ -1066,6 +1057,12 @@ def OnCertificateError(err, url, cb):
         except Exception as err:
             Logger.warning("CEFBrowser: Error in certificate error handler.\n%s", err)
 cefpython.SetGlobalClientCallback("OnCertificateError", OnCertificateError)
+
+Builder.load_file(os.path.join(os.path.realpath(os.path.dirname(__file__)), "cefbrowser.kv"))
+CEFBrowser._js_alert = Factory.CEFBrowserJSAlert()
+CEFBrowser._js_confirm = Factory.CEFBrowserJSConfirm()
+CEFBrowser._js_prompt = Factory.CEFBrowserJSPrompt()
+
 
 if __name__ == "__main__":
     import os
