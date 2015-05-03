@@ -435,7 +435,6 @@ class CEFBrowser(Widget, FocusBehavior):
                 self._browser.SendMouseWheelEvent(
                     touch.x, self.height-touch.pos[1], 0, dx, -dy
                 )
-                print("Mouse scroll")
         return True
 
     def on_touch_up(self, touch, *kwargs):
