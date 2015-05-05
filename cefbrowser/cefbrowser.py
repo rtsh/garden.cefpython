@@ -792,6 +792,8 @@ window.print = function () {
 // Keyboard management
 
 var __kivy__activeKeyboardElement = false;
+var __kivy__activeKeyboardElementSince = false;
+var __kivy__activeKeyboardElementSelection = false;
 var __kivy__updateRectTimer = false;
 var __kivy__lastRect = [];
 
@@ -846,6 +848,8 @@ function __kivy__getRect(elem) { // This takes into account frame position in pa
 window.addEventListener("focus", function (e) {
     var ike = __kivy__isKeyboardElement(e.target);
     __kivy__activeKeyboardElement = (ike?e.target:false);
+    __kivy__activeKeyboardElementSince = new Date().getTime();
+    __kivy__activeKeyboardElementSelection = false;
     __kivy__lastRect = __kivy__getRect(e.target);
     var attributes = __kivy__getAttributes(e.target);
     __kivy__keyboard_update(ike, __kivy__lastRect, attributes);
@@ -855,6 +859,8 @@ window.addEventListener("focus", function (e) {
 window.addEventListener("blur", function (e) {
     __kivy__keyboard_update(false, [], {});
     __kivy__activeKeyboardElement = false;
+    __kivy__activeKeyboardElementSince = new Date().getTime();
+    __kivy__activeKeyboardElementSelection = false;
     __kivy__lastRect = [];
     __kivy__updateSelection();
 }, true);
@@ -873,6 +879,12 @@ function __kivy__updateRect() {
 window.addEventListener("scroll", function (e) {
     if (__kivy__updateRectTimer) window.clearTimeout(__kivy__updateRectTimer);
     __kivy__updateRectTimer = window.setTimeout(__kivy__updateRect, 25);
+}, true);
+window.addEventListener("click", function (e) {
+    if (e.target==__kivy__activeKeyboardElement && 750<(new Date().getTime()-__kivy__activeKeyboardElementSince)) {
+        __kivy__activeKeyboardElementSelection = true; // TODO: only if selection stays the same
+        __kivy__updateSelection();
+    }
 }, true);
 
 function __kivy__on_escape() {
@@ -894,7 +906,7 @@ function __kivy__updateSelection() {
         var lrect = __kivy__getRect(__kivy__activeKeyboardElement);
         var sstart = __kivy__activeKeyboardElement.selectionStart;
         var send = __kivy__activeKeyboardElement.selectionEnd;
-        __kivy__selection_update({"shown":true, "can_cut":(send!=sstart), "can_copy":(send!=sstart), "can_paste":true}, lrect, __kivy__activeKeyboardElement.value.substr(sstart, send-sstart));
+        __kivy__selection_update({"shown":(__kivy__activeKeyboardElementSelection || send!=sstart), "can_cut":(send!=sstart), "can_copy":(send!=sstart), "can_paste":true}, lrect, __kivy__activeKeyboardElement.value.substr(sstart, send-sstart));
     } else {
         try {
             var s = window.getSelection();
