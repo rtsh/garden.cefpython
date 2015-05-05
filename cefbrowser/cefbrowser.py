@@ -157,7 +157,7 @@ class CEFBrowser(Widget, FocusBehavior):
             raise CEFAlreadyInitialized()
         CEFBrowser._command_line_switches.update(d)
         Logger.debug("CEFBrowser: update_command_line_switches => %s", CEFBrowser._command_line_switches)
-        print "update_command_line_switches", cls._command_line_switches
+        #print "update_command_line_switches", cls._command_line_switches
 
     @classmethod
     def update_settings(cls, d):
@@ -269,11 +269,11 @@ class CEFBrowser(Widget, FocusBehavior):
         if cookie_manager:
             cookie_manager.DeleteCookies(url, "")
         else:
-            print("No cookie manager found!, Can't delete cookie(s)")
+            Logger.warning("No cookie manager found!, Can't delete cookie(s)")
 
     def on_url(self, instance, value):
         if self._browser and value and value!=self._browser.GetUrl():
-            print("ON URL", instance, value, self._browser.GetUrl(), self._browser.GetMainFrame().GetUrl())
+            #print("ON URL", instance, value, self._browser.GetUrl(), self._browser.GetMainFrame().GetUrl())
             self._browser.Navigate(self.url)
 
     def on_js_dialog(self, browser, origin_url, accept_lang, dialog_type, message_text, default_prompt_text, callback,
@@ -290,7 +290,7 @@ class CEFBrowser(Widget, FocusBehavior):
         pass
 
     def on_load_error(self, frame, errorCode, errorText, failedUrl):
-        print("on_load_error=> Code: %s, errorText: %s, failedURL: %s" % (errorCode, errorText, failedUrl))
+        Logger.error("on_load_error=> Code: %s, errorText: %s, failedURL: %s" % (errorCode, errorText, failedUrl))
         pass
 
     def _keyboard_update(self, shown, rect, attributes):
@@ -300,7 +300,7 @@ class CEFBrowser(Widget, FocusBehavior):
         :param attributes: Attributes of HTML element
         """
         self.__keyboard_state = {"shown":shown, "rect":rect, "attributes":attributes}
-        print("KB", self.url, self.__keyboard_state, self.parent)
+        #print("KB", self.url, self.__keyboard_state, self.parent)
         if shown and self.parent: # No orphaned keyboards
             self.focus = True
             self.keyboard_position(self, self.keyboard.widget, rect, attributes)
@@ -362,11 +362,11 @@ class CEFBrowser(Widget, FocusBehavior):
         return False
 
     def keyboard_on_key_down(self, *largs):
-        print("KEY DOWN", largs)
+        #print("KEY DOWN", largs)
         CEFKeyboardManager.kivy_on_key_down(self._browser, *largs)
 
     def keyboard_on_key_up(self, *largs):
-        print("KEY UP", largs)
+        #print("KEY UP", largs)
         CEFKeyboardManager.kivy_on_key_up(self._browser, *largs)
 
     def on_touch_down(self, touch, *kwargs):
@@ -408,7 +408,6 @@ class CEFBrowser(Widget, FocusBehavior):
                             x_start, y_start, 0, cefpython.MOUSEBUTTON_LEFT,
                             mouseUp=False, clickCount=1
                         )
-                        print("Mouse down")
                         touch.is_dragging = True
 
         elif len(self._touches) == 2:
@@ -426,14 +425,12 @@ class CEFBrowser(Widget, FocusBehavior):
                             cefpython.MOUSEBUTTON_LEFT, mouseUp=True,
                             clickCount=1
                         )
-                        print("Mouse up")
                         _touch.is_dragging = False
                     # Set touch state to scrolling
                     _touch.is_scrolling = True
                 self._browser.SendMouseWheelEvent(
                     touch.x, self.height-touch.pos[1], 0, dx, -dy
                 )
-                print("Mouse scroll")
         return True
 
     def on_touch_up(self, touch, *kwargs):
@@ -455,7 +452,6 @@ class CEFBrowser(Widget, FocusBehavior):
                     x, y, 0, cefpython.MOUSEBUTTON_RIGHT,
                     mouseUp=True, clickCount=1
                 )
-                print("Mouse right click")
         else:
             if touch.is_dragging:
                 # Drag end (mouse up)
@@ -464,7 +460,6 @@ class CEFBrowser(Widget, FocusBehavior):
                     cefpython.MOUSEBUTTON_LEFT,
                     mouseUp=True, clickCount=1
                 )
-                print("Mouse up (end of drag)")
             elif not touch.is_right_click and not touch.is_scrolling:
                 # Left click (mouse down, mouse up)
                 count = 1
@@ -480,7 +475,6 @@ class CEFBrowser(Widget, FocusBehavior):
                     cefpython.MOUSEBUTTON_LEFT,
                     mouseUp=True, clickCount=count
                 )
-                print("Mouse click")
 
         self._touches.remove(touch)
         touch.ungrab(self)
@@ -660,7 +654,8 @@ class ClientHandler():
         if browser.GetMainFrame()==frame:
             self.browser_widgets[browser].url = url
         else:
-            print("TODO: Address changed in Frame")
+            pass
+            #print("TODO: Address changed in Frame")
 
     def OnTitleChange(self, browser, new_title):
         self.browser_widgets[browser].title = new_title
@@ -690,7 +685,7 @@ class ClientHandler():
             cefpython.JSDIALOGTYPE_CONFIRM:["confirm", CEFBrowser._js_confirm],
             cefpython.JSDIALOGTYPE_PROMPT:["prompt", CEFBrowser._js_prompt],
         }
-        print("OnJavascriptDialog", browser, origin_url, accept_lang, dialog_types[dialog_type][0], message_text, default_prompt_text, callback, suppress_message, largs)
+        #print("OnJavascriptDialog", browser, origin_url, accept_lang, dialog_types[dialog_type][0], message_text, default_prompt_text, callback, suppress_message, largs)
         def js_continue(allow, user_input):
             self._active_js_dialog = None
             callback.Continue(allow, user_input)
@@ -775,7 +770,7 @@ class ClientHandler():
         return False
 
     def OnBeforeClose(self, browser, *largs):
-        print("On Before Close")
+        Logger.info("On Before Close")
 
     # LoadHandler
 
@@ -933,7 +928,7 @@ document.addEventListener("selectionchange", function (e) {
         bw.dispatch("on_load_error", frame, errorCode, errorText, failedUrl)
 
     def OnRendererProcessTerminated(self, *largs):
-        print("OnRendererProcessTerminated", largs)
+        Logger.info("OnRendererProcessTerminated", largs)
 
     # RenderHandler
 
@@ -1012,7 +1007,7 @@ document.addEventListener("selectionchange", function (e) {
         if cookie_manager:
             return cookie_manager
         else:
-            print("No cookie manager found!")
+            Logger.warning("No cookie manager found!")
 
     def OnProtocolExecution(self, *largs):
         pass
@@ -1023,7 +1018,7 @@ document.addEventListener("selectionchange", function (e) {
 client_handler = ClientHandler()
 
 def OnAfterCreated(browser):
-    print("On After Created", browser, browser.IsPopup(), browser.GetIdentifier(), browser.GetWindowHandle(), browser.GetOpenerWindowHandle())
+    #print("On After Created", browser, browser.IsPopup(), browser.GetIdentifier(), browser.GetWindowHandle(), browser.GetOpenerWindowHandle())
     if browser.IsPopup():
         wh = browser.GetWindowHandle()
         cb = CEFBrowser(browser=browser)
@@ -1047,7 +1042,7 @@ def OnAfterCreated(browser):
 cefpython.SetGlobalClientCallback("OnAfterCreated", OnAfterCreated)
 
 def OnCertificateError(err, url, cb):
-    print("OnCertificateError", err, url, cb)
+    Logger.warning("OnCertificateError", err, url, cb)
     if CEFBrowser.certificate_error_handler:
         try:
             res = CEFBrowser.certificate_error_handler(CEFBrowser(), err, url)
