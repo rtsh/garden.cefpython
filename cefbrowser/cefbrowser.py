@@ -602,14 +602,14 @@ class ClientHandler():
         self.browser_widgets[browser].title = new_title
 
     def OnTooltip(self, *largs):
-        return True # We handled it. And did do nothing about it. :O
+        return True  # We handled it. And did do nothing about it. :O
 
     def OnStatusMessage(self, browser, message):
         Logger.info("CEFBrowser: Status: %s", message)
 
     def OnConsoleMessage(self, browser, message, source, line):
-        Logger.info("CEFBrowser: Console: %s - %s(%i)", message, source, line)
-        return True # We handled it
+        # Logger.info("CEFBrowser: Console: %s - %s(%i)", message, source, line)
+        return True  # We handled it
 
     # DownloadHandler
 

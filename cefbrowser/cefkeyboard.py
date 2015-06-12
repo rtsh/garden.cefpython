@@ -12,6 +12,7 @@ from kivy.core.window import Window
 from kivy.uix.vkeyboard import VKeyboard
 from lib.cefpython import cefpython
 
+
 class CEFKeyboardManagerSingleton():
     # Kivy does not provide modifiers in on_key_up, but these
     # must be sent to CEF as well.
@@ -22,7 +23,7 @@ class CEFKeyboardManagerSingleton():
     is_alt1 = False
     is_alt2 = False
 
-    def __init__ (self, *largs, **dargs):
+    def __init__(self, *largs, **dargs):
         pass
     
     def reset_all_modifiers(self):
@@ -34,7 +35,7 @@ class CEFKeyboardManagerSingleton():
         self.is_alt2 = False
     
     def kivy_on_key_down(self, browser, keyboard, keycode, text, modifiers):
-        #print "\non_key_down:", keycode, text, modifiers
+        # print "\non_key_down:", keycode, text, modifiers
         if keycode[0] == 27:
             # On escape release the keyboard, see the injected
             # javascript in OnLoadStart().
@@ -57,11 +58,13 @@ class CEFKeyboardManagerSingleton():
         event_type = cefpython.KEYEVENT_KEYDOWN
 
         # Only send KEYEVENT_KEYDOWN if it is a special key (tab, return ...)
-        # Convert every other key to it's utf8 int value and send this as the key
+        # Convert every other key to it's utf8 int value
         if cef_key_code == keycode[0] and text:
             cef_key_code = ord(text)
+            # print("keycode convert: %s -> %s" % (text, cef_key_code))
             
-            # We have to convert the apostrophes as the utf8 key-code somehow don't get recognized by cef
+            # We have to convert the apostrophes as the utf8 key-code
+            # somehow isn't recognized by cef
             if cef_key_code == 96:
                 cef_key_code = 39
             if cef_key_code == 8220:
@@ -69,7 +72,8 @@ class CEFKeyboardManagerSingleton():
             
             event_type = cefpython.KEYEVENT_CHAR
 
-        # When the key is the return key, send it as a KEYEVENT_CHAR as it will not work in textinputs
+        # When the key is the return key,
+        # send it as a KEYEVENT_CHAR as it will not work in textinputs
         if cef_key_code == 65293:
             event_type = cefpython.KEYEVENT_CHAR
 
@@ -77,7 +81,7 @@ class CEFKeyboardManagerSingleton():
                      "native_key_code": cef_key_code,
                      "modifiers": cef_modifiers
                      }
-        #print("keydown keyEvent: %s" % key_event)
+        print("keyDown keyEvent: %s" % key_event)
         browser.SendKeyEvent(key_event)
 
         if keycode[0] == 304:
@@ -108,9 +112,9 @@ class CEFKeyboardManagerSingleton():
         # Only send KEYEVENT_KEYUP if its a special (enter, tab ...)
         if not cef_key_code == keycode[0]:
             key_event = {"type": cefpython.KEYEVENT_KEYUP,
-                        "native_key_code": cef_key_code,
-                        "modifiers": cef_modifiers
-                        }
+                         "native_key_code": cef_key_code,
+                         "modifiers": cef_modifiers}
+            print("keyUp keyEvent: %s" % key_event)
             browser.SendKeyEvent(key_event)
 
         if keycode[0] == 304:

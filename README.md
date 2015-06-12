@@ -34,6 +34,16 @@ needed DLLs are copied correctly from the downloaded ZIP file. You would then
 need to edit `lib/cefpython_sources.json`.
 
 
+How to develop with virtualenv
+------------------------------
+
+1. Create a virtualenv: `virtualenv venv`
+2. Install kivy into virtualenv (consult kivy docs for this)
+3. Install other dependencies into virtualenv: `venv/bin/pip install -r requirements.txt`
+4. Symlink cefbrowser into graden directory: `ln -s path/to/gardne.cefpython ~/.kivy/garden/garden.cefpython`
+5. Now you should be able to launch one of the examples: `venv/bin/python examples/minimal.py`
+
+
 Known Issues
 ------------
 

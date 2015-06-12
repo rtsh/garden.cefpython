@@ -15,7 +15,7 @@ from kivy.garden.cefpython import CEFBrowser
 if __name__ == '__main__':
     class SimpleBrowserApp(App):
         def build(self):
-            return CEFBrowser(url="http://www.rentouch.ch")
+            return CEFBrowser(url="http://jegger.ch/datapool/app/test_input.html")
 
     SimpleBrowserApp().run()
 
