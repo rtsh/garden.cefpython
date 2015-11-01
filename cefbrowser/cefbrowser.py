@@ -50,7 +50,7 @@ class CEFBrowser(Widget, FocusBehavior):
     _cookies_path = None
     _logs_path = None
     _cookie_manager = None
-    
+
     # Instance Variables
     url = StringProperty("about:blank")
     """The URL of the (main frame of the) browser."""
@@ -401,12 +401,12 @@ class CEFBrowser(Widget, FocusBehavior):
                 if (abs(touch.dx) > 5 or abs(touch.dy) > 5) or touch.is_dragging:
                     if touch.is_dragging:
                         self._browser.SendMouseMoveEvent(
-                            x, y, mouseLeave=False, modifiers=16
+                            x, y, mouseLeave=False, modifiers=cefpython.EVENTFLAG_LEFT_MOUSE_BUTTON
                         )
                     else:
                         self._browser.SendMouseClickEvent(
                             x_start, y_start, cefpython.MOUSEBUTTON_LEFT,
-                            mouseUp=False, clickCount=1, modifiers=0
+                            mouseUp=False, clickCount=1, modifiers=cefpython.EVENTFLAG_NONE
                         )
                         touch.is_dragging = True
 
@@ -423,13 +423,13 @@ class CEFBrowser(Widget, FocusBehavior):
                         self._browser.SendMouseClickEvent(
                             _touch.ppos[0], _touch.ppos[1],
                             cefpython.MOUSEBUTTON_LEFT, mouseUp=True,
-                            clickCount=1, modifiers=0
+                            clickCount=1, modifiers=cefpython.EVENTFLAG_NONE
                         )
                         _touch.is_dragging = False
                     # Set touch state to scrolling
                     _touch.is_scrolling = True
                 self._browser.SendMouseWheelEvent(
-                    touch.x, self.height-touch.pos[1], dx, -dy, modifiers=0
+                    touch.x, self.height-touch.pos[1], dx, -dy, modifiers=cefpython.EVENTFLAG_NONE
                 )
         return True
 
@@ -446,11 +446,11 @@ class CEFBrowser(Widget, FocusBehavior):
                 self._touches[0].is_right_click = self._touches[1].is_right_click = True
                 self._browser.SendMouseClickEvent(
                     x, y, cefpython.MOUSEBUTTON_RIGHT,
-                    mouseUp=False, clickCount=1, modifiers=0
+                    mouseUp=False, clickCount=1, modifiers=cefpython.EVENTFLAG_NONE
                 )
                 self._browser.SendMouseClickEvent(
                     x, y, cefpython.MOUSEBUTTON_RIGHT,
-                    mouseUp=True, clickCount=1, modifiers=0
+                    mouseUp=True, clickCount=1, modifiers=cefpython.EVENTFLAG_NONE
                 )
         else:
             if touch.is_dragging:
@@ -458,7 +458,7 @@ class CEFBrowser(Widget, FocusBehavior):
                 self._browser.SendMouseClickEvent(
                     touch.ppos[0], self.height-touch.ppos[1] + self.pos[1],
                     cefpython.MOUSEBUTTON_LEFT,
-                    mouseUp=True, clickCount=1, modifiers=0
+                    mouseUp=True, clickCount=1, modifiers=cefpython.EVENTFLAG_NONE
                 )
             elif not touch.is_right_click and not touch.is_scrolling:
                 # Left click (mouse down, mouse up)
@@ -468,12 +468,12 @@ class CEFBrowser(Widget, FocusBehavior):
                 self._browser.SendMouseClickEvent(
                     x, y,
                     cefpython.MOUSEBUTTON_LEFT,
-                    mouseUp=False, clickCount=count, modifiers=0
+                    mouseUp=False, clickCount=count, modifiers=cefpython.EVENTFLAG_NONE
                 )
                 self._browser.SendMouseClickEvent(
                     x, y,
                     cefpython.MOUSEBUTTON_LEFT,
-                    mouseUp=True, clickCount=count, modifiers=0
+                    mouseUp=True, clickCount=count, modifiers=cefpython.EVENTFLAG_NONE
                 )
 
         self._touches.remove(touch)
@@ -1137,4 +1137,3 @@ if __name__ == "__main__":
     CEFBrowserApp().run()
 
     cefpython.Shutdown()
-

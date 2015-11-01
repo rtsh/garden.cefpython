@@ -1,0 +1,218 @@
+
+<html>
+<head>
+<title>Test Browser Features</title>
+<script>
+var gl = {};
+function log(str) {
+    document.getElementById("log").innerHTML += str+"<br>";
+}
+function result(res, exp, ident, str, cont) {
+    if (gl.result_continue_fn || gl.result_continue_timeout) {
+        console.error("No concurrency!!! "+JSON.stringify([res, exp, ident, str]));
+        return;
+    }
+    var status = (exp==undefined?0:(res===exp?1:2));
+    var out = {0:"&nbsp;&nbsp;&nbsp;&nbsp;", 1:"<span style='color:rgb(0,255,0);'>&nbsp;OK&nbsp;</span>", 2:"<span style='color:rgb(255,0,0);'>FAIL</span>"}[status];
+    out += " <b>"+ident+"</b> <i>"+str+"</i>"
+    out += {0:"", 1:"", 2:" <span style='color:rgb(255,0,0);'><b>Error:</b> "+JSON.stringify(res)+" instead of "+JSON.stringify(exp)+"</span>"}[status]
+    log(out);
+    if (window.test_result) {
+        gl.result_continue_fn = cont;
+        try {
+            window.test_result(res, exp, ident, str);
+        } catch (err) {}
+        gl.result_continue_timeout = window.setTimeout(result_continue, 5000);
+    } else {
+        window.setTimeout(cont, 1);
+    }
+}
+function result_continue() {
+    if (gl.result_continue_timeout) window.clearTimeout(gl.result_continue_timeout);
+    var fn = gl.result_continue_fn;
+    if (!fn) { // Hack to be able to communicate to frame (cefpython can't; JavascriptBindings are only for whole browser)
+        try {
+            gl.iframe.contentWindow.result_continue();
+        } catch (err) {}
+        return;
+    }
+    gl.result_continue_fn = false;
+    gl.result_continue_timeout = false;
+    fn();
+}
+
+function init() {
+    var qs = window.location.search;
+    if (qs[0]=="?") qs = qs.substr(1);
+    if (qs=="check") {
+        if (document.cookie=="redirect") {
+            window.location.href = "?";
+            return;
+        }
+        check_cache();
+        window.addEventListener("beforeunload", function (e) {
+            document.cookie = "redirect";
+        });
+    } else if (qs=="popup") {
+        in_popup();
+    } else if (qs=="iframe") {
+        in_iframe();
+    } else {
+        prepare();
+    }
+}
+
+function prepare() {
+    var test = document.createElement("img");
+    test.onload = function () {
+        log("Img cached.");
+        document.cookie = "cookie_test";
+        log("document.cookie set.");
+        localStorage["test"] = "test";
+        log("localStorage set.");
+        sessionStorage["test"] = "test";
+        log("sessionStorage set.");
+        window.location.href = "?check";
+    };
+    test.src = "general.png";
+}
+function check_cache() {
+    var test = document.createElement("img");
+    test.src = "general.png";
+    var incache = (test.complete || test.width+test.height > 0);
+    result(incache, true, "cache", "In the preparation step, an image has been cached. Now it should be in the cache.", check_cookie);
+}
+function check_cookie() {
+    result(document.cookie, "cookie_test", "cookies", "In the preparation step, a cookie has been set. Now it should be readable.  (persist_session_cookies=False could be an issue).", check_popup);
+}
+function check_popup() {
+    document.cookie = "cookie_test_0";
+    gl.popup = window.open("?popup", "popup_test", "width=800,height=600,left=560,top=240,scrollbars,toolbar=0,location=0,resizable=1");
+    var popupOK = !!(gl.popup && gl.popup.document && gl.popup.location);
+    if (!popupOK) {
+        document.cookie = "cookie_test_2";
+        window.setTimeout(check_localstorage, 1);
+    }
+    result(popupOK, true, "popup", "The popup was created and looking healthy.", function () {
+        gl.continue_popup_from_result = true;
+        if (gl.continue_popup_from_popup) continue_popup();
+    });
+}
+function in_popup() {
+    if (document.cookie=="cookie_test_0") document.cookie = "cookie_test_1";
+    window.opener.continue_popup_from_popup(window);
+}
+function continue_popup_from_popup(winArg) {
+    gl.popup_from_popup = winArg;
+    gl.continue_popup_from_popup = true;
+    if (gl.continue_popup_from_result) continue_popup();
+}
+function continue_popup() {
+    var res = (gl.popup==gl.popup_from_popup);
+    gl.popup_from_popup.close();
+    result(res, true, "popup identity", "The variable from `window.open` equals the window as seen within the popup.", function () {
+        var res = document.cookie;
+        document.cookie = "cookie_test_2";
+        result(res, "cookie_test_1", "popup functionality", "bidirectional cookies, `window.opener` in popup.", check_localstorage);
+    });
+}
+function check_localstorage() {
+    result((localStorage?localStorage["test"]:""), "test", "localStorage", "In the preparation step, localStorage has been written to. Now it should be readable.", check_sessionstorage);
+}
+function check_sessionstorage() {
+    result((sessionStorage?sessionStorage["test"]:""), "test", "sessionStorage", "In the preparation step, sessionStorage has been written to. Now it should be readable.", check_touchscreen);
+}
+function check_touchscreen() {
+    var isTouch = ("ontouchstart" in window || navigator.msMaxTouchPoints);
+    result(isTouch, undefined, "touch", (isTouch?"This is recognized as a touch screen":"This is not recognized as touch screen"), check_iframe);
+}
+function check_iframe() {
+    gl.iframe = document.createElement("iframe");
+    gl.iframe.setAttribute("src", "?iframe");
+    gl.iframe.setAttribute("style", "position:fixed; left:"+(window.innerWidth/2)+"px; top:"+(window.innerHeight/2)+"px; width:"+(window.innerWidth/2-10)+"px; height:"+(window.innerHeight/2-10)+"px; border:1px solid black;");
+    document.documentElement.appendChild(gl.iframe);
+    result(true, undefined, "iframe", "iframe", function () {
+        console.log("sdfgh");
+        gl.continue_iframe_from_result = true;
+        if (gl.continue_iframe_from_iframe) continue_iframe(false);
+    });
+
+}
+function in_iframe() {
+    if (document.cookie=="cookie_test_2") document.cookie = "cookie_test_3";
+    log(window.innerWidth+"x"+window.innerHeight);
+    gl.input = document.createElement("input");
+    gl.input.setAttribute("style", "position:absolute; left:0px; top:0px; width:200px; height:20px;");
+    document.documentElement.appendChild(gl.input);
+    gl.input.focus();
+    gl.sinput = document.createElement("input");
+    gl.sinput.setAttribute("style", "position:absolute; left:0px; top:"+(window.innerHeight*2)+"px; width:200px; height:20px;");
+    document.documentElement.appendChild(gl.sinput);
+    result(true, undefined, "focus", "focus", function () {
+        window.parent.continue_iframe_from_iframe(window);
+    });
+}
+function continue_iframe_from_iframe(winArg) {
+    gl.iframe_from_iframe = winArg;
+    gl.continue_iframe_from_iframe = true;
+    if (gl.continue_iframe_from_result) continue_iframe(winArg);
+}
+function continue_iframe(winArg) {
+    console.log(123);
+    log((gl.iframe.offsetWidth-2)+"x"+(gl.iframe.offsetHeight-2));
+    result((gl.iframe.contentWindow==winArg), true, "iframe identity", "The variable `contentWindow` of the iframe equals the window as seen within the iframe.", function () {
+        var res = document.cookie;
+        document.cookie = "cookie_test_4";
+        result(res, "cookie_test_3", "iframe functionality", "bidirectional cookies, `window.parent` in iframe.", check_keyboard);
+    });
+}
+function check_keyboard() {
+    gl.input = document.createElement("input");
+    gl.input.setAttribute("style", "position:fixed; left:0px; top:0px; width:200px; height:20px;");
+    document.documentElement.appendChild(gl.input);
+    gl.input.focus();
+    check_alert();
+}
+function check_alert() {
+    result(!!alert, true, "alert", "JS alert exists.", check_confirm_yes);
+    var res = alert("Click OK");
+}
+function check_confirm_yes() {
+    result(!!confirm, true, "confirm_yes", "JS confirm exists.", function () {});
+    var res = confirm("Click OK");
+    result(res, true, "confirm", "JS confirm was confirmed with `OK`.", check_confirm_no);
+}
+function check_confirm_no() {
+    result(!!confirm, true, "confirm_no", "JS confirm exists.", function () {});
+    var res = confirm("Click Cancel");
+    result(res, false, "reject", "JS confirm was rejected with `Cancel`.", check_prompt);
+}
+function check_prompt() {
+    result(!!prompt, true, "prompt", "JS prompt exists.", function () {});
+    var res = prompt("Write `Test` and click `OK`");
+    gl.type_index = 0;
+    result(res, "Test", "response", "JS prompt was answered with `Test`.", check_input_types);
+}
+function check_input_types() {
+    var types = [["search"], ["email"], ["url"], ["tel"], ["number"], ["range"], ["date"], ["month"], ["week"], ["time"], ["datetime"], ["datetime-local"], ["color"]];
+    var type = types[gl.type_index];
+    gl.type_index++;
+    gl.input.blur();
+    gl.input.type = type[0];
+    gl.input.focus();
+    result(1, 1, "input_type_"+type[0], "JS prompt was answered with `Test`.", (gl.type_index==types.length?check_last:check_input_types));
+}
+function check_last() {
+    log("<a href='javascript:window.location.reload()'>FINISHED</a>");
+}
+
+
+window.onload = init;
+</script>
+
+</head>
+<body style='background-color:rgb(250,250,250);' id='bodyelem'>
+<div id='work'></div>
+<div style='font-family:monospace; padding:10px;' id='log'></div>
+</body>
+</html>
