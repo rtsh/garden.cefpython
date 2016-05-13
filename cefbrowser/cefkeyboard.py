@@ -33,6 +33,14 @@ class CEFKeyboardManagerSingleton():
         self.is_ctrl2 = False
         self.is_alt1 = False
         self.is_alt2 = False
+
+    def kivy_keyboard_on_textinput(self, browser, window, text):
+        """ Kivy ~ > 1.9.2 with SDL2 window, uses on_textinput instead of
+        on_key_down
+        """
+        modifiers = list()
+        keycode = (ord(text), text)
+        self.kivy_on_key_down(browser, None, keycode, text, modifiers)
     
     def kivy_on_key_down(self, browser, keyboard, keycode, text, modifiers):
         # print "\non_key_down:", keycode, text, modifiers

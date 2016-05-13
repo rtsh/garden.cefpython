@@ -371,6 +371,10 @@ class CEFBrowser(Widget, FocusBehavior):
         #print("KEY UP", largs)
         CEFKeyboardManager.kivy_on_key_up(self._browser, *largs)
 
+    def keyboard_on_textinput(self, window, text):
+        CEFKeyboardManager.kivy_keyboard_on_textinput(self._browser,
+                                                      window, text)
+
     def on_touch_down(self, touch, *kwargs):
         if not self.collide_point(*touch.pos):
             return
