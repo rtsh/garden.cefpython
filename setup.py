@@ -7,8 +7,10 @@
 
 from setuptools import setup
 from pip.req import parse_requirements
+import pip
 
-install_reqs = parse_requirements("requirements.txt")
+install_reqs = parse_requirements("requirements.txt",
+                                  session=pip.download.PipSession())
 reqs = [str(ir.req) for ir in install_reqs]
 
 # -----------------------------------------------------------------------------
