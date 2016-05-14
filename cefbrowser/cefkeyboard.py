@@ -43,7 +43,9 @@ class CEFKeyboardManagerSingleton():
         self.process_key_down(browser, None, keycode, text, modifiers)
     
     def kivy_on_key_down(self, browser, keyboard, keycode, text, modifiers):
-        if Window.__class__.__module__ == 'kivy.core.window.window_sdl2':
+        whitelist = (8,)
+        if Window.__class__.__module__ == 'kivy.core.window.window_sdl2' and \
+                (keycode[0] not in whitelist):
             return
         self.process_key_down(browser, keyboard, keycode, text, modifiers)
 
