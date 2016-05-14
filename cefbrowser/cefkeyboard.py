@@ -40,9 +40,14 @@ class CEFKeyboardManagerSingleton():
         """
         modifiers = list()
         keycode = (ord(text), text)
-        self.kivy_on_key_down(browser, None, keycode, text, modifiers)
+        self.process_key_down(browser, None, keycode, text, modifiers)
     
     def kivy_on_key_down(self, browser, keyboard, keycode, text, modifiers):
+        if Window.__class__.__module__ == 'kivy.core.window.window_sdl2':
+            return
+        self.process_key_down(browser, keyboard, keycode, text, modifiers)
+
+    def process_key_down(self, browser, keyboard, keycode, text, modifiers):
         # print "\non_key_down:", keycode, text, modifiers
         if keycode[0] == 27:
             # On escape release the keyboard, see the injected
