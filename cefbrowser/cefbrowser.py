@@ -950,7 +950,6 @@ def OnAfterCreated(browser):
 cefpython.SetGlobalClientCallback("OnAfterCreated", OnAfterCreated)
 
 def OnCertificateError(err, url, cb):
-    Logger.warning("OnCertificateError", err, url, cb)
     if CEFBrowser.certificate_error_handler:
         try:
             res = CEFBrowser.certificate_error_handler(CEFBrowser(), err, url)
