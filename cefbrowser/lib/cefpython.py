@@ -256,6 +256,7 @@ def cefpython_initialize(CEFBrowser):
         os.makedirs(logs_path, 0o0700)
     default_settings["log_file"] = os.path.join(logs_path, "cefpython.log")
 
+    cefpython.WindowUtils.InstallX11ErrorHandlers()
     try:
         cefpython.Initialize(default_settings, CEFBrowser._command_line_switches)
     except Exception as err:

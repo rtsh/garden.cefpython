@@ -86,7 +86,7 @@ class CEFBrowser(Widget, FocusBehavior):
     close_handler = None
     """The value of the `close_handler` variable is a function that handles
     closing browsers or popups.
-    It takes 1 argument:
+    It takes 1 argumeSetAsChildnt:
     - `browser`: The browser to be closed
     It remove everything belonging to `browser` from the widget tree
     If `close_handler` is None, cannot be executed or doesn't remove `browser`
@@ -668,8 +668,8 @@ class ClientHandler():
 
     # LifeSpanHandler
 
-    def OnBeforePopup(self, browser, frame, target_url, target_frame_name, popup_features, window_info, client, browser_settings, *largs):
-        Logger.debug("CEFBrowser: OnBeforePopup\n\tBrowser: %s\n\tFrame: %s\n\tURL: %s\n\tFrame Name: %s\n\tPopup Features: %s\n\tWindow Info: %s\n\tClient: %s\n\tBrowser Settings: %s\n\tRemaining Args: %s", browser, frame, target_url, target_frame_name, popup_features, window_info, client, browser_settings, largs)
+    def OnBeforePopup(self, browser, frame, target_url, target_frame_name, target_disposition, user_gesture, popup_features, window_info, client, browser_settings, no_javascript_access, *largs):
+        Logger.debug("CEFBrowser: OnBeforePopup\n\tBrowser: %s\n\tFrame: %s\n\tURL: %s\n\tFrame Name: %s\n\tTarget disposition: %s\n\tUser gesture: %s\n\tPopup Features: %s\n\tWindow Info: %s\n\tClient: %s\n\tBrowser Settings: %s\n\tNoJSAccess: %s\n\tRemaining Args: %s", browser, frame, target_url, target_frame_name, target_disposition, user_gesture, popup_features, window_info, client, browser_settings, no_javascript_access, largs)
         bw = self.browser_widgets[browser]
         if hasattr(bw.popup_policy, "__call__"):
             try:
@@ -684,7 +684,7 @@ class ClientHandler():
         if allow_popup:
             r = random.randint(1, 2**31-1)
             wi = cefpython.WindowInfo()
-            wi.SetAsChild(0)
+            wi.SetAsChild(0, [0,0,0,0])
             wi.SetAsOffscreen(r)
             window_info.append(wi)
             browser_settings.append({})
