@@ -407,11 +407,11 @@ class CEFBrowser(Widget, FocusBehavior):
                 if (abs(touch.dx) > 5 or abs(touch.dy) > 5) or touch.is_dragging:
                     if touch.is_dragging:
                         self._browser.SendMouseMoveEvent(
-                            x, y, 16, mouseLeave=False
+                            x, y, mouseLeave=False
                         )
                     else:
                         self._browser.SendMouseClickEvent(
-                            x_start, y_start, 0, cefpython.MOUSEBUTTON_LEFT,
+                            x_start, y_start, cefpython.MOUSEBUTTON_LEFT,
                             mouseUp=False, clickCount=1
                         )
                         touch.is_dragging = True
@@ -427,7 +427,7 @@ class CEFBrowser(Widget, FocusBehavior):
                     if _touch.is_dragging:
                         # End the drag event by releasing the mouse button
                         self._browser.SendMouseClickEvent(
-                            _touch.ppos[0], _touch.ppos[1], 0,
+                            _touch.ppos[0], _touch.ppos[1],
                             cefpython.MOUSEBUTTON_LEFT, mouseUp=True,
                             clickCount=1
                         )
@@ -435,7 +435,7 @@ class CEFBrowser(Widget, FocusBehavior):
                     # Set touch state to scrolling
                     _touch.is_scrolling = True
                 self._browser.SendMouseWheelEvent(
-                    touch.x, self.height-touch.pos[1], 0, dx, -dy
+                    touch.x, self.height-touch.pos[1], dx, -dy
                 )
         return True
 
@@ -451,18 +451,18 @@ class CEFBrowser(Widget, FocusBehavior):
                 # Right click (mouse down, mouse up)
                 self._touches[0].is_right_click = self._touches[1].is_right_click = True
                 self._browser.SendMouseClickEvent(
-                    x, y, 0, cefpython.MOUSEBUTTON_RIGHT,
+                    x, y, cefpython.MOUSEBUTTON_RIGHT,
                     mouseUp=False, clickCount=1
                 )
                 self._browser.SendMouseClickEvent(
-                    x, y, 0, cefpython.MOUSEBUTTON_RIGHT,
+                    x, y, cefpython.MOUSEBUTTON_RIGHT,
                     mouseUp=True, clickCount=1
                 )
         else:
             if touch.is_dragging:
                 # Drag end (mouse up)
                 self._browser.SendMouseClickEvent(
-                    touch.ppos[0], self.height-touch.ppos[1] + self.pos[1], 0,
+                    touch.ppos[0], self.height-touch.ppos[1] + self.pos[1],
                     cefpython.MOUSEBUTTON_LEFT,
                     mouseUp=True, clickCount=1
                 )
@@ -472,12 +472,12 @@ class CEFBrowser(Widget, FocusBehavior):
                 if touch.is_double_tap:
                     count = 2
                 self._browser.SendMouseClickEvent(
-                    x, y, 0, 
+                    x, y,
                     cefpython.MOUSEBUTTON_LEFT,
                     mouseUp=False, clickCount=count
                 )
                 self._browser.SendMouseClickEvent(
-                    x, y, 0, 
+                    x, y,
                     cefpython.MOUSEBUTTON_LEFT,
                     mouseUp=True, clickCount=count
                 )
@@ -624,7 +624,7 @@ class ClientHandler():
     # JavascriptDialogHandler
     active_js_dialog = None
 
-    def OnJavascriptDialog(self, browser, origin_url, accept_lang, dialog_type, message_text, default_prompt_text, callback, suppress_message, *largs):
+    def OnJavascriptDialog(self, browser, originUrl, dialogType, messageText, defaultPromptText, callback, suppressMessage, *largs):
         dialog_types = {
             cefpython.JSDIALOGTYPE_ALERT:["alert", cef_browser_js_alert],
             cefpython.JSDIALOGTYPE_CONFIRM:["confirm", cef_browser_js_confirm],
@@ -693,9 +693,9 @@ class ClientHandler():
         else:
             return True
 
-    def RunModal(self, browser, *largs):
+    """def RunModal(self, browser, *largs):
         Logger.debug("CEFBrowser: RunModal\n\tBrowser: %s\n\tRemaining Args: %s", browser, largs)
-        return False
+        return False"""
 
     def DoClose(self, browser):
         bw = self.browser_widgets[browser]

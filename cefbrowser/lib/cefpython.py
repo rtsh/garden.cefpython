@@ -232,6 +232,7 @@ def cefpython_initialize(CEFBrowser):
         "resources_dir_path": md,
         "browser_subprocess_path": os.path.join(md, SUBPROCESS),
         "unique_request_context_per_browser": True,
+        "windowless_rendering_enabled": True,
     }
     default_settings.update(CEFBrowser._settings)
     caches_path = os.path.join(md, "caches")

@@ -74,9 +74,10 @@ class CEFKeyboardManagerSingleton():
 
         # Only send KEYEVENT_KEYDOWN if it is a special key (tab, return ...)
         # Convert every other key to it's utf8 int value
+        print cef_key_code, "=", keycode[0], "text:", text
         if cef_key_code == keycode[0] and text:
             cef_key_code = ord(text)
-            # print("keycode convert: %s -> %s" % (text, cef_key_code))
+            print("keycode convert: %s -> %s" % (text, cef_key_code))
             
             # We have to convert the apostrophes as the utf8 key-code
             # somehow isn't recognized by cef
@@ -92,10 +93,13 @@ class CEFKeyboardManagerSingleton():
         if cef_key_code == 65293:
             event_type = cefpython.KEYEVENT_CHAR
 
-        key_event = {"type": event_type,
-                     "native_key_code": cef_key_code,
-                     "modifiers": cef_modifiers
-                     }
+        key_event = {
+                "type": event_type,
+                "native_key_code": cef_key_code,
+                "character": keycode[0],
+                "unmodified_character": keycode[0],
+                "modifiers": cef_modifiers
+        }
         print("keyDown keyEvent: %s" % key_event)
         browser.SendKeyEvent(key_event)
 
@@ -126,9 +130,13 @@ class CEFKeyboardManagerSingleton():
 
         # Only send KEYEVENT_KEYUP if its a special (enter, tab ...)
         if not cef_key_code == keycode[0]:
-            key_event = {"type": cefpython.KEYEVENT_KEYUP,
-                         "native_key_code": cef_key_code,
-                         "modifiers": cef_modifiers}
+            key_event = {
+                "type": cefpython.KEYEVENT_KEYUP,
+                "native_key_code": cef_key_code,
+                "character": keycode[0],
+                "unmodified_character": keycode[0],
+                "modifiers": cef_modifiers
+        }
             print("keyUp keyEvent: %s" % key_event)
             browser.SendKeyEvent(key_event)
 
