@@ -630,14 +630,14 @@ class ClientHandler():
             cefpython.JSDIALOGTYPE_CONFIRM:["confirm", cef_browser_js_confirm],
             cefpython.JSDIALOGTYPE_PROMPT:["prompt", cef_browser_js_prompt],
         }
-        #print("OnJavascriptDialog", browser, origin_url, accept_lang, dialog_types[dialog_type][0], message_text, default_prompt_text, callback, suppress_message, largs)
+        #print("OnJavascriptDialog", browser, originUrl, dialog_types[dialogType][0], messageText, defaultPromptText, callback, suppressMessage, largs)
         def js_continue(allow, user_input):
             active_js_dialog = None
             callback.Continue(allow, user_input)
-        p = dialog_types[dialog_type][1]
-        p.text = message_text
+        p = dialog_types[dialogType][1]
+        p.text = messageText
         p.js_continue = js_continue
-        p.default_prompt_text = default_prompt_text
+        p.default_prompt_text = defaultPromptText
         p.open()
         active_js_dialog = p
         return True
