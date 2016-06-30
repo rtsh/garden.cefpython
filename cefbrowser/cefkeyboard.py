@@ -70,14 +70,15 @@ class CEFKeyboardManagerSingleton():
 
         # print("on_key_down(): cefModifiers = %s" % cefModifiers)
         cef_key_code = self.translate_to_cef_keycode(keycode[0])
+        win_keycode = self.get_windows_key_code(keycode[0])
         event_type = cefpython.KEYEVENT_KEYDOWN
 
         # Only send KEYEVENT_KEYDOWN if it is a special key (tab, return ...)
         # Convert every other key to it's utf8 int value
-        print cef_key_code, "=", keycode[0], "text:", text
+        # print cef_key_code, "=", keycode[0], "text:", text
         if cef_key_code == keycode[0] and text:
             cef_key_code = ord(text)
-            print("keycode convert: %s -> %s" % (text, cef_key_code))
+            # print("keycode convert: %s -> %s" % (text, cef_key_code))
             
             # We have to convert the apostrophes as the utf8 key-code
             # somehow isn't recognized by cef
@@ -98,9 +99,10 @@ class CEFKeyboardManagerSingleton():
                 "native_key_code": cef_key_code,
                 "character": keycode[0],
                 "unmodified_character": keycode[0],
+                "windows_key_code": win_keycode,
                 "modifiers": cef_modifiers
         }
-        print("keyDown keyEvent: %s" % key_event)
+        # print("keyDown keyEvent: %s" % key_event)
         browser.SendKeyEvent(key_event)
 
         if keycode[0] == 304:
@@ -127,6 +129,7 @@ class CEFKeyboardManagerSingleton():
             cef_modifiers |= cefpython.EVENTFLAG_ALT_DOWN
 
         cef_key_code = self.translate_to_cef_keycode(keycode[0])
+        win_keycode = self.get_windows_key_code(keycode[0])
 
         # Only send KEYEVENT_KEYUP if its a special (enter, tab ...)
         if not cef_key_code == keycode[0]:
@@ -135,9 +138,10 @@ class CEFKeyboardManagerSingleton():
                 "native_key_code": cef_key_code,
                 "character": keycode[0],
                 "unmodified_character": keycode[0],
+                "windows_key_code": win_keycode,
                 "modifiers": cef_modifiers
         }
-            print("keyUp keyEvent: %s" % key_event)
+            # print("keyUp keyEvent: %s" % key_event)
             browser.SendKeyEvent(key_event)
 
         if keycode[0] == 304:
@@ -188,6 +192,77 @@ class CEFKeyboardManagerSingleton():
         if str(keycode) in other_keys_map:
             cef_keycode = other_keys_map[str(keycode)]
         return cef_keycode
+
+    def get_windows_key_code(self, kivycode):
+
+        cefcode = kivycode
+
+        # NOTES:
+        # - Map on all platforms to OnPreKeyEvent.event["windows_key_code"]
+        # - Mapping all keys was not necessary on Linux, for example
+        #   'comma' worked fine, while 'dot' did not, but mapping all keys
+        #   to make sure it will work correctly on all platforms.
+        # - If some key mapping is missing launch wxpython.py and see
+        #   OnPreKeyEvent info for key events and replacate it here.
+        #   (key codes can also be found on MSDN Virtual-key codes page)
+
+        # Must map basic letters, otherwise eg. ctrl+a to select all
+        # text won't work. (97-122 kivy <> 65-90 cef)
+        if 97 <= kivycode <= 122:
+            cefcode = kivycode - 32
+
+        other_keys_map = {
+            # Escape
+            "27":27,
+            # F1-F12
+            "282":112, "283":113, "284":114, "285":115,
+            "286":116, "287":117, "288":118, "289":119,
+            "290":120, "291":121, "292":122, "293":123,
+            # Tab
+            "9":9,
+            # Left Shift, Right Shift
+            "304":16, "303":16,
+            # Left Ctrl, Right Ctrl
+            "306":17, "305": 17,
+            # Left Alt, Right Alt
+            # TODO: left alt is_system_key=True in CEF but only when RAWKEYDOWN
+            "308":18, "313":225,
+            # Backspace
+            "8":8,
+            # Enter
+            "13":13,
+            # PrScr, ScrLck, Pause
+            "316":42, "302":145, "19":19,
+            # Insert, Delete,
+            # Home, End,
+            # Pgup, Pgdn
+            "277":45, "127":46,
+            "278":36, "279":35,
+            "280":33, "281":34,
+            # Arrows (left, up, right, down)
+            "276":37, "273":38, "275":39, "274":40,
+            # tilde
+            "96":192,
+            # minus, plus
+            "45":189, "61":187,
+            # square brackets / curly brackets, backslash
+            "91":219, "93":221, "92":220,
+            # windows key
+            "311":91,
+            # colon / semicolon
+            "59": 186,
+            # single quote / double quote
+            "39":222,
+            # comma, dot, slash
+            "44":188, "46":190, "47":91,
+            # context menu key is 93, but disable as it crashes app after
+            # context menu is shown.
+            "319":0,
+        }
+        if str(kivycode) in other_keys_map:
+            cefcode = other_keys_map[str(kivycode)]
+
+        return cefcode
 
 
 CEFKeyboardManager = CEFKeyboardManagerSingleton()
