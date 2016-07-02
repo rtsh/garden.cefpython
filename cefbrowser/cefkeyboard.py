@@ -51,12 +51,12 @@ class CEFKeyboardManagerSingleton():
 
     def process_key_down(self, browser, keyboard, key, text, modifiers):
         # NOTE: Right alt modifier is not sent by Kivy through modifiers param.
-        print("---- on_key_down")
-        print("-- key="+str(key))
+        # print("---- on_key_down")
+        # print("-- key="+str(key))
         # print(text) - utf-8 char
-        print("-- modifiers="+str(modifiers))
-        if text:
-            print("-- ord(text)="+str(ord(text)))
+        # print("-- modifiers="+str(modifiers))
+        # if text:
+        #    print("-- ord(text)="+str(ord(text)))
 
         # CEF key event type:
         #   KEYEVENT_RAWKEYDOWN = 0
@@ -97,7 +97,7 @@ class CEFKeyboardManagerSingleton():
                 "unmodified_character": charcode,
                 "modifiers": cef_modifiers,
         }
-        print("- SendKeyEvent: %s" % keyEvent)
+        # print("- SendKeyEvent: %s" % keyEvent)
         browser.SendKeyEvent(keyEvent)
 
         # Send key event to cef: CHAR
@@ -109,7 +109,7 @@ class CEFKeyboardManagerSingleton():
                     "unmodified_character": charcode,
                     "modifiers": cef_modifiers
             }
-            print("- SendKeyEvent: %s" % keyEvent)
+            # print("- SendKeyEvent: %s" % keyEvent)
             browser.SendKeyEvent(keyEvent)
 
         if key[0] == 304:
@@ -126,8 +126,8 @@ class CEFKeyboardManagerSingleton():
             self.is_alt2 = True
 
     def kivy_on_key_up(self, browser, keyboard, key):
-        print("---- on_key_up")
-        print("-- key="+str(key))
+        # print("---- on_key_up")
+        # print("-- key="+str(key))
 
         # CEF modifiers
         cef_modifiers = cefpython.EVENTFLAG_NONE
@@ -149,7 +149,7 @@ class CEFKeyboardManagerSingleton():
                 "unmodified_character": charcode,
                 "modifiers": cef_modifiers
         }
-        print("- SendKeyEvent: %s" % keyEvent)
+        # print("- SendKeyEvent: %s" % keyEvent)
         browser.SendKeyEvent(keyEvent)
 
         if key[0] == 304:

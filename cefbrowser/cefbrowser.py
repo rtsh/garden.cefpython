@@ -47,7 +47,9 @@ class CEFBrowser(Widget, FocusBehavior):
     If `certificate_error_handler` is None or cannot be executed, the default
     is False."""
     _cefpython_initialized = False
-    _command_line_switches = {}
+    _command_line_switches = {
+        "ppapi-flash-path":
+            "/opt/google/chrome/PepperFlash/libpepflashplayer.so", }
     _settings = {}
     _caches_path = None
     _cookies_path = None
