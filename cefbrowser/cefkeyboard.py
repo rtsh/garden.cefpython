@@ -49,15 +49,31 @@ class CEFKeyboardManagerSingleton():
             return
         self.process_key_down(browser, keyboard, keycode, text, modifiers)
 
-    def process_key_down(self, browser, keyboard, keycode, text, modifiers):
-        # print "\non_key_down:", keycode, text, modifiers
-        if keycode[0] == 27:
-            # On escape release the keyboard, see the injected
-            # javascript in OnLoadStart().
+    def process_key_down(self, browser, keyboard, key, text, modifiers):
+        # NOTE: Right alt modifier is not sent by Kivy through modifiers param.
+        print("---- on_key_down")
+        print("-- key="+str(key))
+        # print(text) - utf-8 char
+        print("-- modifiers="+str(modifiers))
+        if text:
+            print("-- ord(text)="+str(ord(text)))
+
+        # CEF key event type:
+        #   KEYEVENT_RAWKEYDOWN = 0
+        #   KEYEVENT_KEYDOWN = 1
+        #   KEYEVENT_KEYUP = 2
+        #   KEYEVENT_CHAR = 3
+
+        # On escape release the keyboard, see the injected in OnLoadStart()
+        if key[0] == 27:
             browser.GetFocusedFrame().ExecuteJavascript(
-                    "__kivy__on_escape()")
+                "__kivy__on_escape()")
             return
 
+        # CEF modifiers
+        # When pressing ctrl also set modifiers for ctrl
+        if key[0] in (306, 305):
+            modifiers.append('ctrl')
         cef_modifiers = cefpython.EVENTFLAG_NONE
         if "shift" in modifiers:
             cef_modifiers |= cefpython.EVENTFLAG_SHIFT_DOWN
@@ -68,58 +84,52 @@ class CEFKeyboardManagerSingleton():
         if "capslock" in modifiers:
             cef_modifiers |= cefpython.EVENTFLAG_CAPS_LOCK_ON
 
-        # print("on_key_down(): cefModifiers = %s" % cefModifiers)
-        cef_key_code = self.translate_to_cef_keycode(keycode[0])
-        win_keycode = self.get_windows_key_code(keycode[0])
-        event_type = cefpython.KEYEVENT_KEYDOWN
+        keycode = self.get_windows_key_code(key[0])
+        charcode = key[0]
+        if text:
+            charcode = ord(text)
 
-        # Only send KEYEVENT_KEYDOWN if it is a special key (tab, return ...)
-        # Convert every other key to it's utf8 int value
-        # print cef_key_code, "=", keycode[0], "text:", text
-        if cef_key_code == keycode[0] and text:
-            cef_key_code = ord(text)
-            # print("keycode convert: %s -> %s" % (text, cef_key_code))
-            
-            # We have to convert the apostrophes as the utf8 key-code
-            # somehow isn't recognized by cef
-            if cef_key_code == 96:
-                cef_key_code = 39
-            if cef_key_code == 8220:
-                cef_key_code = 34
-            
-            event_type = cefpython.KEYEVENT_CHAR
-
-        # When the key is the return key,
-        # send it as a KEYEVENT_CHAR as it will not work in textinputs
-        if cef_key_code == 65293:
-            event_type = cefpython.KEYEVENT_CHAR
-
-        key_event = {
-                "type": event_type,
-                "native_key_code": cef_key_code,
-                "character": keycode[0],
-                "unmodified_character": keycode[0],
-                "windows_key_code": win_keycode,
-                "modifiers": cef_modifiers
+        # Send key event to cef: RAWKEYDOWN
+        keyEvent = {
+                "type": cefpython.KEYEVENT_RAWKEYDOWN,
+                "windows_key_code": keycode,
+                "character": charcode,
+                "unmodified_character": charcode,
+                "modifiers": cef_modifiers,
         }
-        # print("keyDown keyEvent: %s" % key_event)
-        browser.SendKeyEvent(key_event)
+        print("- SendKeyEvent: %s" % keyEvent)
+        browser.SendKeyEvent(keyEvent)
 
-        if keycode[0] == 304:
+        # Send key event to cef: CHAR
+        if text:
+            keyEvent = {
+                    "type": cefpython.KEYEVENT_CHAR,
+                    "windows_key_code": keycode,
+                    "character": charcode,
+                    "unmodified_character": charcode,
+                    "modifiers": cef_modifiers
+            }
+            print("- SendKeyEvent: %s" % keyEvent)
+            browser.SendKeyEvent(keyEvent)
+
+        if key[0] == 304:
             self.is_shift1 = True
-        elif keycode[0] == 303:
+        elif key[0] == 303:
             self.is_shift2 = True
-        elif keycode[0] == 306:
+        elif key[0] == 306:
             self.is_ctrl1 = True
-        elif keycode[0] == 305:
+        elif key[0] == 305:
             self.is_ctrl2 = True
-        elif keycode[0] == 308:
+        elif key[0] == 308:
             self.is_alt1 = True
-        elif keycode[0] == 313:
+        elif key[0] == 313:
             self.is_alt2 = True
 
-    def kivy_on_key_up(self, browser, keyboard, keycode):
-        #print("\non_key_up(): keycode = %s" % (keycode,))
+    def kivy_on_key_up(self, browser, keyboard, key):
+        print("---- on_key_up")
+        print("-- key="+str(key))
+
+        # CEF modifiers
         cef_modifiers = cefpython.EVENTFLAG_NONE
         if self.is_shift1 or self.is_shift2:
             cef_modifiers |= cefpython.EVENTFLAG_SHIFT_DOWN
@@ -128,70 +138,32 @@ class CEFKeyboardManagerSingleton():
         if self.is_alt1:
             cef_modifiers |= cefpython.EVENTFLAG_ALT_DOWN
 
-        cef_key_code = self.translate_to_cef_keycode(keycode[0])
-        win_keycode = self.get_windows_key_code(keycode[0])
+        keycode = self.get_windows_key_code(key[0])
+        charcode = key[0]
 
-        # Only send KEYEVENT_KEYUP if its a special (enter, tab ...)
-        if not cef_key_code == keycode[0]:
-            key_event = {
+        # Send key event to cef: KEYUP
+        keyEvent = {
                 "type": cefpython.KEYEVENT_KEYUP,
-                "native_key_code": cef_key_code,
-                "character": keycode[0],
-                "unmodified_character": keycode[0],
-                "windows_key_code": win_keycode,
+                "windows_key_code": keycode,
+                "character": charcode,
+                "unmodified_character": charcode,
                 "modifiers": cef_modifiers
         }
-            # print("keyUp keyEvent: %s" % key_event)
-            browser.SendKeyEvent(key_event)
+        print("- SendKeyEvent: %s" % keyEvent)
+        browser.SendKeyEvent(keyEvent)
 
-        if keycode[0] == 304:
+        if key[0] == 304:
             self.is_shift1 = False
-        elif keycode[0] == 303:
+        elif key[0] == 303:
             self.is_shift2 = False
-        elif keycode[0] == 306:
+        elif key[0] == 306:
             self.is_ctrl1 = False
-        elif keycode[0] == 305:
+        elif key[0] == 305:
             self.is_ctrl2 = False
-        elif keycode[0] == 308:
+        elif key[0] == 308:
             self.is_alt1 = False
-        elif keycode[0] == 313:
+        elif key[0] == 313:
             self.is_alt2 = False
-
-    def translate_to_cef_keycode(self, keycode):
-        cef_keycode = keycode
-        other_keys_map = {
-            # Escape
-            "27":65307,
-            # F1-F12
-            "282":65470, "283":65471, "284":65472, "285":65473,
-            "286":65474, "287":65475, "288":65476, "289":65477,
-            "290":65478, "291":65479, "292":65480, "293":65481,
-            # Tab
-            "9":65289,
-            # Left Shift, Right Shift
-            "304":65505, "303":65506,
-            # Left Ctrl, Right Ctrl
-            "306":65507, "305": 65508,
-            # Left Alt, Right Alt
-            "308":65513, "313":65027,
-            # Backspace
-            "8":65288,
-            # Enter
-            "13":65293,
-            # PrScr, ScrLck, Pause
-            "316":65377, "302":65300, "19":65299,
-            # Insert, Delete,
-            # Home, End,
-            # Pgup, Pgdn
-            "277":65379, "127":65535,
-            "278":65360, "279":65367,
-            "280":65365, "281":65366,
-            # Arrows (left, up, right, down)
-            "276":65361, "273":65362, "275":65363, "274":65364,
-        }
-        if str(keycode) in other_keys_map:
-            cef_keycode = other_keys_map[str(keycode)]
-        return cef_keycode
 
     def get_windows_key_code(self, kivycode):
 
