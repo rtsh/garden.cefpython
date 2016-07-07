@@ -49,7 +49,8 @@ class CEFBrowser(Widget, FocusBehavior):
     _cefpython_initialized = False
     _command_line_switches = {
         "ppapi-flash-path":
-            "/opt/google/chrome/PepperFlash/libpepflashplayer.so", }
+            "/opt/google/chrome/PepperFlash/libpepflashplayer.so",
+        "disable-gpu-compositing": ""}
     _settings = {}
     _caches_path = None
     _cookies_path = None
@@ -143,7 +144,10 @@ class CEFBrowser(Widget, FocusBehavior):
         if not self._browser:
             windowInfo = cefpython.WindowInfo()
             windowInfo.SetAsOffscreen(0)
-            self._browser = cefpython.CreateBrowserSync(windowInfo, {}, navigateUrl=self.url)
+            self._browser = cefpython.CreateBrowserSync(
+                windowInfo,
+                {"windowless_frame_rate": 60, },
+                navigateUrl=self.url)
         self._browser.SetClientHandler(client_handler)
         client_handler.browser_widgets[self._browser] = self
         self._browser.WasResized()
