@@ -412,8 +412,10 @@ class CEFBrowser(Widget, FocusBehavior):
                 # Dragging
                 if (abs(touch.dx) > 5 or abs(touch.dy) > 5) or touch.is_dragging:
                     if touch.is_dragging:
+                        modifiers = cefpython.EVENTFLAG_LEFT_MOUSE_BUTTON
                         self._browser.SendMouseMoveEvent(
-                            x, y, mouseLeave=False
+                            x, y, mouseLeave=False,
+                            modifiers=modifiers
                         )
                     else:
                         self._browser.SendMouseClickEvent(
