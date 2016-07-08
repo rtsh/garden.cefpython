@@ -225,7 +225,7 @@ def cefpython_initialize(CEFBrowser):
     cefpython_loop_event = Clock.schedule_interval(cef_loop, 0.01)
 
     default_settings = {
-        "debug": True,
+        "debug": False,
         "log_severity": cefpython.LOGSEVERITY_INFO,
         "release_dcheck_enabled": True,  # Enable only when debugging.
         "locales_dir_path": os.path.join(md, "locales"),
