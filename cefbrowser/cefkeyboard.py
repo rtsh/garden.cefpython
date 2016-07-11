@@ -129,6 +129,11 @@ class CEFKeyboardManagerSingleton():
         # print("---- on_key_up")
         # print("-- key="+str(key))
 
+        # Check if kivy-key-code is -1. This means it is a not a key which
+        # should be passed to CEF. (Ex: Change keyboard layout)
+        if key[0] == -1:
+            return
+
         # CEF modifiers
         cef_modifiers = cefpython.EVENTFLAG_NONE
         if self.is_shift1 or self.is_shift2:
