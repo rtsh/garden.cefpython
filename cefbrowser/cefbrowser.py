@@ -142,8 +142,15 @@ class CEFBrowser(Widget, FocusBehavior):
             cefpython_initialize(CEFBrowser)
             CEFBrowser._cefpython_initialized = True
         if not self._browser:
+            # On x11 input provider we have the window-id (handle)
+            wid = 0
+            try:
+                from kivy.core.window import Window as kivy_window
+                wid = kivy_window.window_id
+            except Exception as e:
+                Logger.debug("Use window handle %s, because: %s" % (wid, e))
             windowInfo = cefpython.WindowInfo()
-            windowInfo.SetAsOffscreen(0)
+            windowInfo.SetAsOffscreen(wid)
             self._browser = cefpython.CreateBrowserSync(
                 windowInfo,
                 {"windowless_frame_rate": 60, },
@@ -620,7 +627,7 @@ class ClientHandler():
         Logger.info("CEFBrowser: Status: %s", message)
 
     def OnConsoleMessage(self, browser, message, source, line):
-        # Logger.info("CEFBrowser: Console: %s - %s(%i)", message, source, line)
+        Logger.info("CEFBrowser: Console: %s - %s(%i)", message, source, line)
         return True  # We handled it
 
     # DownloadHandler
@@ -825,11 +832,11 @@ function __kivy__on_escape() {
     if (__kivy__activeKeyboardElement) __kivy__activeKeyboardElement.blur();
     if (document.activeElement) document.activeElement.blur();
 }
-var ae = document.activeElement;
-if (ae) {
-    ae.blur();
-    ae.focus();
-}
+//var ae = document.activeElement;
+//if (ae) {
+//    ae.blur();
+//    ae.focus();
+//}
 __kivy__updateRectTimer = window.setTimeout(__kivy__updateRect, 1000);
 """
             frame.ExecuteJavascript(jsCode)
