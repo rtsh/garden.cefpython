@@ -58,7 +58,7 @@ class CEFBrowser(Widget, FocusBehavior):
     _cookie_manager = None
     
     # Instance Variables
-    url = StringProperty("about:blank")
+    url = StringProperty("")
     """The URL of the (main frame of the) browser."""
     is_loading = BooleanProperty(False)
     """Whether the browser is loading content"""
@@ -114,7 +114,7 @@ class CEFBrowser(Widget, FocusBehavior):
     __rect = None
     __keyboard_state = {}
 
-    def __init__(self, url="about:blank", *largs, **dargs):
+    def __init__(self, url="", *largs, **dargs):
         self.url = url
         self.popup_policy = dargs.pop("popup_policy", CEFBrowser.always_block_popups)
         self.popup_handler = dargs.pop("popup_handler", CEFBrowser.fullscreen_popup)
