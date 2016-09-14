@@ -645,33 +645,34 @@ class ClientHandler():
             cefpython.JSDIALOGTYPE_CONFIRM:["confirm", cef_browser_js_confirm],
             cefpython.JSDIALOGTYPE_PROMPT:["prompt", cef_browser_js_prompt],
         }
-        #print("OnJavascriptDialog", browser, originUrl, dialog_types[dialogType][0], messageText, defaultPromptText, callback, suppressMessage, largs)
+        # print("OnJavascriptDialog", browser, originUrl, dialog_types[dialogType][0], messageText, defaultPromptText, callback, suppressMessage, largs)
+
         def js_continue(allow, user_input):
-            active_js_dialog = None
+            self.active_js_dialog = None
             callback.Continue(allow, user_input)
         p = dialog_types[dialogType][1]
         p.text = messageText
         p.js_continue = js_continue
         p.default_prompt_text = defaultPromptText
         p.open()
-        active_js_dialog = p
+        self.active_js_dialog = p
         return True
 
     def OnBeforeUnloadJavascriptDialog(self, browser, message_text, is_reload, callback):
         def js_continue(allow, user_input):
-            active_js_dialog = None
+            self.active_js_dialog = None
             callback.Continue(allow, user_input)
         p = cef_browser_js_confirm
         p.text = message_text
         p.js_continue = js_continue
         p.default_prompt_text = ""
         p.open()
-        active_js_dialog = p
+        self.active_js_dialog = p
         return True
 
     def OnResetJavascriptDialogState(self, browser):
-        if active_js_dialog:
-            active_js_dialog.dismiss()
+        if self.active_js_dialog:
+            self.active_js_dialog.dismiss()
 
     # KeyboardHandler
 
