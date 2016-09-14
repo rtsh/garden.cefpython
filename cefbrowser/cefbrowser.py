@@ -14,6 +14,7 @@ from kivy.factory import Factory
 from kivy.lang import Builder
 from kivy.logger import Logger
 from kivy.properties import *
+from kivy import resources
 from kivy.uix.behaviors import FocusBehavior
 from kivy.uix.widget import Widget
 from lib.cefpython import cefpython, cefpython_initialize
@@ -24,8 +25,8 @@ import os
 import random
 import time
 
-
-Builder.load_file(os.path.join(os.path.realpath(os.path.dirname(__file__)), "cefbrowser.kv"))
+resources.resource_add_path(os.path.abspath(os.path.join(os.path.dirname(__file__))))
+Builder.load_file(resources.resource_find("cefbrowser.kv"))
 cef_browser_js_alert = Factory.CEFBrowserJSAlert()
 cef_browser_js_confirm = Factory.CEFBrowserJSConfirm()
 cef_browser_js_prompt = Factory.CEFBrowserJSPrompt()
@@ -162,6 +163,7 @@ class CEFBrowser(Widget, FocusBehavior):
         self.bind(pos=self._realign)
         self.bind(parent=self._on_parent)
         self.bind(focus=self._on_focus)
+        self.html5_drag_representation = Factory.HTML5DragIcon()
         self.js._inject()
 
     @classmethod
@@ -388,6 +390,11 @@ class CEFBrowser(Widget, FocusBehavior):
         CEFKeyboardManager.kivy_keyboard_on_textinput(self._browser,
                                                       window, text)
 
+    is_html5_drag = False  # Indicates if a html5 drag is happening
+    is_html5_drag_leave = False  # Mouse leaves web view
+    html5_drag_data = None
+    current_html5_drag_operation = cefpython.DRAG_OPERATION_NONE
+
     def on_touch_down(self, touch, *kwargs):
         if not self.collide_point(*touch.pos):
             return
@@ -416,20 +423,38 @@ class CEFBrowser(Widget, FocusBehavior):
 
         if len(self._touches) == 1:
             if not touch.is_scrolling or touch.is_right_click:
-                # Dragging
-                if (abs(touch.dx) > 5 or abs(touch.dy) > 5) or touch.is_dragging:
-                    if touch.is_dragging:
-                        modifiers = cefpython.EVENTFLAG_LEFT_MOUSE_BUTTON
-                        self._browser.SendMouseMoveEvent(
-                            x, y, mouseLeave=False,
-                            modifiers=modifiers
-                        )
+                # Dragging: Differ between HTML5 drag and normal drag
+                if self.is_html5_drag:
+                    if self.is_inside_window(touch.x, touch.y):
+                        if self.is_html5_drag_leave:
+                            # Logger.debug("~~ DragTargetDragEnter")
+                            self._browser.DragTargetDragEnter(
+                                self.html5_drag_data, x, y,
+                                cefpython.DRAG_OPERATION_EVERY)
+                            self.is_html5_drag_leave = False
+                        # Logger.debug("~~ DragTargetDragOver")
+                        self._browser.DragTargetDragOver(
+                            x, y, cefpython.DRAG_OPERATION_EVERY)
+                        self.update_drag_representation(touch.x, touch.y)
                     else:
-                        self._browser.SendMouseClickEvent(
-                            x_start, y_start, cefpython.MOUSEBUTTON_LEFT,
-                            mouseUp=False, clickCount=1
-                        )
-                        touch.is_dragging = True
+                        if not self.is_html5_drag_leave:
+                            self.is_html5_drag_leave = True
+                            # Logger.debug("~~ DragTargetDragLeave")
+                            self._browser.DragTargetDragLeave()
+                else:
+                    if (abs(touch.dx) > 5 or abs(touch.dy) > 5) or touch.is_dragging:
+                        if touch.is_dragging:
+                            modifiers = cefpython.EVENTFLAG_LEFT_MOUSE_BUTTON
+                            self._browser.SendMouseMoveEvent(
+                                x, y, mouseLeave=False,
+                                modifiers=modifiers
+                            )
+                        else:
+                            self._browser.SendMouseClickEvent(
+                                x_start, y_start, cefpython.MOUSEBUTTON_LEFT,
+                                mouseUp=False, clickCount=1
+                            )
+                            touch.is_dragging = True
 
         elif len(self._touches) == 2:
             # Scroll only if a minimal distance passed (could be right click)
@@ -461,45 +486,100 @@ class CEFBrowser(Widget, FocusBehavior):
         y = self.height-touch.pos[1] + self.pos[1]
         x = touch.x - self.pos[0]
 
-        if len(self._touches) == 2:
-            if not touch.is_scrolling:
-                # Right click (mouse down, mouse up)
-                self._touches[0].is_right_click = self._touches[1].is_right_click = True
-                self._browser.SendMouseClickEvent(
-                    x, y, cefpython.MOUSEBUTTON_RIGHT,
-                    mouseUp=False, clickCount=1
-                )
-                self._browser.SendMouseClickEvent(
-                    x, y, cefpython.MOUSEBUTTON_RIGHT,
-                    mouseUp=True, clickCount=1
-                )
+        if self.is_html5_drag:
+            if self.is_html5_drag_leave or not self.is_inside_window(touch.x, touch.y):
+                # See comment in is_inside_web_view() - x/y at borders
+                # should be treated as outside of web view.
+                x = touch.x
+                if x == 0:
+                    x = -1
+                if x == self.width-1:
+                    x = self.width
+                if y == 0:
+                    y = -1
+                if y == self.height-1:
+                    y = self.height
+                # Logger.debug("~~ DragSourceEndedAt")
+                # Logger.debug("~~ current_drag_operation=%s"
+                #              % self.current_drag_operation)
+                self._browser.DragSourceEndedAt(x, y,
+                                                self.current_drag_operation)
+                self.drag_ended()
+            else:
+                # Logger.debug("~~ DragTargetDrop")
+                # Logger.debug("~~ DragSourceEndedAt")
+                # Logger.debug("~~ current_drag_operation=%s"
+                #              % self.current_drag_operation)
+                self._browser.DragTargetDrop(touch.x, y)
+                self._browser.DragSourceEndedAt(touch.x, y,
+                                                self.current_drag_operation)
+                self.drag_ended()
+
         else:
-            if touch.is_dragging:
-                # Drag end (mouse up)
-                self._browser.SendMouseClickEvent(
-                    touch.ppos[0], self.height-touch.ppos[1] + self.pos[1],
-                    cefpython.MOUSEBUTTON_LEFT,
-                    mouseUp=True, clickCount=1
-                )
-            elif not touch.is_right_click and not touch.is_scrolling:
-                # Left click (mouse down, mouse up)
-                count = 1
-                if touch.is_double_tap:
-                    count = 2
-                self._browser.SendMouseClickEvent(
-                    x, y,
-                    cefpython.MOUSEBUTTON_LEFT,
-                    mouseUp=False, clickCount=count
-                )
-                self._browser.SendMouseClickEvent(
-                    x, y,
-                    cefpython.MOUSEBUTTON_LEFT,
-                    mouseUp=True, clickCount=count
-                )
+            if len(self._touches) == 2:
+                if not touch.is_scrolling:
+                    # Right click (mouse down, mouse up)
+                    self._touches[0].is_right_click = self._touches[1].is_right_click = True
+                    self._browser.SendMouseClickEvent(
+                        x, y, cefpython.MOUSEBUTTON_RIGHT,
+                        mouseUp=False, clickCount=1
+                    )
+                    self._browser.SendMouseClickEvent(
+                        x, y, cefpython.MOUSEBUTTON_RIGHT,
+                        mouseUp=True, clickCount=1
+                    )
+            else:
+                if touch.is_dragging:
+                    # Drag end (mouse up)
+                    self._browser.SendMouseClickEvent(
+                        touch.ppos[0], self.height-touch.ppos[1] + self.pos[1],
+                        cefpython.MOUSEBUTTON_LEFT,
+                        mouseUp=True, clickCount=1
+                    )
+                elif not touch.is_right_click and not touch.is_scrolling:
+                    # Left click (mouse down, mouse up)
+                    count = 1
+                    if touch.is_double_tap:
+                        count = 2
+                    self._browser.SendMouseClickEvent(
+                        x, y,
+                        cefpython.MOUSEBUTTON_LEFT,
+                        mouseUp=False, clickCount=count
+                    )
+                    self._browser.SendMouseClickEvent(
+                        x, y,
+                        cefpython.MOUSEBUTTON_LEFT,
+                        mouseUp=True, clickCount=count
+                    )
 
         self._touches.remove(touch)
         touch.ungrab(self)
         return True
+
+    def is_inside_window(self, x, y):
+        # When mouse is out of app window Kivy still generates move events
+        # at the borders with x=0, x=width-1, y=0, y=height-1.
+        if (0 < x < Window.width-1) and (0 < y < Window.height-1):
+            return True
+        return False
+
+    def update_drag_representation(self, x, y):
+        """ Displays the representation of the drag under the touch.
+        """
+        if self.is_html5_drag:
+            if self.html5_drag_representation not in self.children:
+                self.add_widget(self.html5_drag_representation)
+            self.html5_drag_representation.center = (x, y)
+        else:
+            self.remove_widget(self.html5_drag_representation)
+
+    def drag_ended(self):
+        self.is_html5_drag = False
+        self.is_html5_drag_leave = False
+        self.current_html5_drag_operation = cefpython.DRAG_OPERATION_NONE
+        self.update_drag_representation(None, None)
+        # Logger.debug("~~ DragSourceSystemDragEnded")
+        self._browser.DragSourceSystemDragEnded()
 
 
 class CEFBrowserPopup(Widget):
@@ -633,6 +713,28 @@ class ClientHandler():
     # DownloadHandler
 
     # DragHandler
+    def StartDragging(self, browser, drag_data, allowed_ops, x, y):
+        """Succession of d&d calls:
+        -   DragTargetDragEnter
+        -   DragTargetDragOver - in touch move event
+        -   DragTargetDragLeave - optional
+        -   DragSourceSystemDragEnded - optional, to cancel dragging
+        -   DragTargetDrop - on mouse up
+        -   DragSourceEndedAt - on mouse up
+        -   DragSourceSystemDragEnded - on mouse up"""
+        # Logger.debug("~~ StartDragging")
+        bw = self.browser_widgets[browser]
+        bw._browser.DragTargetDragEnter(
+            drag_data, x, y, cefpython.DRAG_OPERATION_EVERY)
+        bw.is_html5_drag = True
+        bw.is_html5_drag_leave = False
+        bw.html5_drag_data = drag_data
+        bw.current_html5_drag_operation = cefpython.DRAG_OPERATION_NONE
+        bw.update_drag_representation(x, y)
+        return True
+
+    def UpdateDragCursor(self, browser, operation):
+        self.browser_widgets[browser].current_drag_operation = operation
 
     # JavascriptContextHandler
 
