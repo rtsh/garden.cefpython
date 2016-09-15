@@ -426,6 +426,9 @@ class CEFBrowser(Widget, FocusBehavior):
                 # Dragging: Differ between HTML5 drag and normal drag
                 if self.is_html5_drag:
                     if self.is_inside_window(touch.x, touch.y):
+                        modifiers = cefpython.EVENTFLAG_LEFT_MOUSE_BUTTON
+                        self.cef_mouse_move(x, y, mouse_leave=False,
+                                            modifiers=modifiers)
                         if self.is_html5_drag_leave:
                             # Logger.debug("~~ DragTargetDragEnter")
                             self.cef_drag_target_enter(
