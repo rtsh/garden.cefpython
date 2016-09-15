@@ -430,22 +430,16 @@ class CEFBrowser(Widget, FocusBehavior):
                         self.cef_mouse_move(x, y, mouse_leave=False,
                                             modifiers=modifiers)
                         if self.is_html5_drag_leave:
-                            # Logger.debug("~~ DragTargetDragEnter")
                             self.cef_drag_target_enter(
                                 self.html5_drag_data, x, y,
                                 cefpython.DRAG_OPERATION_EVERY)
                             self.is_html5_drag_leave = False
-                        # Logger.debug("~~ DragTargetDragOver")
-                        #self._browser.DragTargetDragOver(
-                        #    x, y, cefpython.DRAG_OPERATION_EVERY)
                         self.cef_drag_target_drag_over(
                             x, y, cefpython.DRAG_OPERATION_EVERY)
                         self.update_drag_representation(touch.x, touch.y)
                     else:
                         if not self.is_html5_drag_leave:
                             self.is_html5_drag_leave = True
-                            # Logger.debug("~~ DragTargetDragLeave")
-                            #self._browser.DragTargetDragLeave()
                             self.cef_drag_target_drag_leave()
                 else:
                     if (abs(touch.dx) > 5 or abs(touch.dy) > 5) or touch.is_dragging:
@@ -505,23 +499,11 @@ class CEFBrowser(Widget, FocusBehavior):
                     y = -1
                 if y == self.height-1:
                     y = self.height
-                # Logger.debug("~~ DragSourceEndedAt")
-                # Logger.debug("~~ current_drag_operation=%s"
-                #              % self.current_drag_operation)
-                #self._browser.DragSourceEndedAt(x, y,
-                #                                self.current_drag_operation)
                 self.cef_drag_source_ended_at(x, y,
                                               self.current_drag_operation)
                 self.drag_ended()
             else:
-                # Logger.debug("~~ DragTargetDrop")
-                # Logger.debug("~~ DragSourceEndedAt")
-                # Logger.debug("~~ current_drag_operation=%s"
-                #              % self.current_drag_operation)
-                #self._browser.DragTargetDrop(touch.x, y)
                 self.cef_drag_target_drop(touch.x, y)
-                #self._browser.DragSourceEndedAt(touch.x, y,
-                #                                self.current_drag_operation)
                 self.cef_drag_source_ended_at(touch.x, y,
                                               self.current_drag_operation)
                 self.drag_ended()
@@ -632,7 +614,6 @@ class CEFBrowser(Widget, FocusBehavior):
         self.is_html5_drag_leave = False
         self.current_html5_drag_operation = cefpython.DRAG_OPERATION_NONE
         self.update_drag_representation(None, None)
-        # Logger.debug("~~ DragSourceSystemDragEnded")
         self.cef_drag_source_system_drag_ended()
 
 
