@@ -102,7 +102,12 @@
 # -----------------------------------------------------------------------------
 # DragHandler
 # -----------------------------------------------------------------------------
-<HTML5DragIcon@Image>:
-    source: 'images/drag.png'
-    size: 116, 50
-    mipmap: True
+<HTML5DragIcon@Widget>:
+    texture: None
+    canvas.after:
+        Color:
+            rgba: 1,1,1,1
+        Rectangle:
+            pos: root.pos
+            size: root.size
+            texture: root.texture

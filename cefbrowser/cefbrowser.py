@@ -604,6 +604,19 @@ class CEFBrowser(Widget, FocusBehavior):
         """
         if self.is_html5_drag:
             if self.html5_drag_representation not in self.children:
+                image = self.html5_drag_data.GetImage()
+                width = image.GetWidth()
+                height = image.GetHeight()
+                abuffer = image.GetAsBitmap(
+                    1.0,
+                    cefpython.CEF_COLOR_TYPE_BGRA_8888,
+                    cefpython.CEF_ALPHA_TYPE_PREMULTIPLIED)
+                texture = Texture.create(size=(width, height))
+                texture.blit_buffer(abuffer, colorfmt='bgra',
+                                    bufferfmt='ubyte')
+                texture.flip_vertical()
+                self.html5_drag_representation.size = (width, height)
+                self.html5_drag_representation.texture = texture
                 self.add_widget(self.html5_drag_representation)
             self.html5_drag_representation.center = (x, y)
         else:

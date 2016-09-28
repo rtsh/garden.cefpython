@@ -1,3 +1,3 @@
 argparse==1.2.1
-cefpython3==53.0
+cefpython3==53.1
 wsgiref==0.1.2
