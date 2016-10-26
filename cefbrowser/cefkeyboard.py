@@ -64,9 +64,9 @@ class CEFKeyboardManagerSingleton():
         #   KEYEVENT_KEYUP = 2
         #   KEYEVENT_CHAR = 3
 
-        # Check if kivy-key-code is -1. This means it is a not a key which
-        # should be passed to CEF. (Ex: Change keyboard layout)
-        if key[0] == -1:
+        # Check if key is 'special'.
+        # if we pass that to cefpython, it will crash.
+        if key[1] == 'special':
             return
 
         # On escape release the keyboard, see the injected in OnLoadStart()
