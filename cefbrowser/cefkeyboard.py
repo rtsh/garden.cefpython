@@ -94,17 +94,6 @@ class CEFKeyboardManagerSingleton():
         if text:
             charcode = ord(text)
 
-        # Send key event to cef: RAWKEYDOWN
-        keyEvent = {
-                "type": cefpython.KEYEVENT_RAWKEYDOWN,
-                "windows_key_code": keycode,
-                "character": charcode,
-                "unmodified_character": charcode,
-                "modifiers": cef_modifiers,
-        }
-        # print("- SendKeyEvent: %s" % keyEvent)
-        browser.SendKeyEvent(keyEvent)
-
         # Send key event to cef: CHAR
         if text:
             keyEvent = {
@@ -113,6 +102,17 @@ class CEFKeyboardManagerSingleton():
                     "character": charcode,
                     "unmodified_character": charcode,
                     "modifiers": cef_modifiers
+            }
+            # print("- SendKeyEvent: %s" % keyEvent)
+            browser.SendKeyEvent(keyEvent)
+        else:
+            # Send key event to cef: RAWKEYDOWN
+            keyEvent = {
+                    "type": cefpython.KEYEVENT_RAWKEYDOWN,
+                    "windows_key_code": keycode,
+                    "character": charcode,
+                    "unmodified_character": charcode,
+                    "modifiers": cef_modifiers,
             }
             # print("- SendKeyEvent: %s" % keyEvent)
             browser.SendKeyEvent(keyEvent)
