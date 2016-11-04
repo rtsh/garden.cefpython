@@ -724,8 +724,8 @@ class ClientHandler():
 
     # LifeSpanHandler
 
-    def OnBeforePopup(self, browser, frame, target_url, target_frame_name, popup_features, window_info, client, browser_settings, *largs):
-        Logger.debug("CEFBrowser: OnBeforePopup\n\tBrowser: %s\n\tFrame: %s\n\tURL: %s\n\tFrame Name: %s\n\tPopup Features: %s\n\tWindow Info: %s\n\tClient: %s\n\tBrowser Settings: %s\n\tRemaining Args: %s", browser, frame, target_url, target_frame_name, popup_features, window_info, client, browser_settings, largs)
+    def OnBeforePopup(self, browser, frame, target_url, target_frame_name, target_disposition, user_gesture, popup_features, window_info, client, browser_settings, no_javascript_access, *largs):
+        Logger.debug("CEFBrowser: OnBeforePopup\n\tBrowser: %s\n\tFrame: %s\n\tURL: %s\n\tFrame Name: %s\n\tTarget Disposition: %s\n\tUser Gesture: %s\n\tPopup Features: %s\n\tWindow Info: %s\n\tClient: %s\n\tBrowser Settings: %s\n\tNo Javascript Access: %s\n\tRemaining Args: %s", browser, frame, target_url, target_frame_name, target_disposition, user_gesture, popup_features, window_info, client, browser_settings, no_javascript_access, largs)
         bw = self.browser_widgets[browser]
         if hasattr(bw.popup_policy, "__call__"):
             try:
