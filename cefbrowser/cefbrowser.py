@@ -21,6 +21,7 @@ from kivy.uix.widget import Widget
 from lib.cefpython import cefpython, cefpython_initialize
 from cefkeyboard import CEFKeyboardManager
 
+import ctypes
 import json
 import os
 import random
@@ -157,7 +158,7 @@ class CEFBrowser(Widget, FocusBehavior):
             raise CEFAlreadyInitialized()
         CEFBrowser._command_line_switches.update(d)
         Logger.debug("CEFBrowser: update_command_line_switches => %s", CEFBrowser._command_line_switches)
-        #print "update_command_line_switches", cls._command_line_switches
+        #print("update_command_line_switches", cls._command_line_switches)
 
     @classmethod
     def update_settings(cls, d):
@@ -202,7 +203,7 @@ class CEFBrowser(Widget, FocusBehavior):
         if CEFBrowser._cefpython_initialized:
             raise CEFAlreadyInitialized()
         if not os.path.isdir(dp):
-            os.mkdir(dp, 0700)
+            os.mkdir(dp, 0o700)
         CEFBrowser._caches_path = os.path.join(dp, "caches")
         CEFBrowser._cookies_path = os.path.join(dp, "cookies")
         CEFBrowser._logs_path = os.path.join(dp, "logs")
@@ -612,7 +613,7 @@ class CEFBrowserCutCopyPasteBubble(Bubble):
         self._text = text
 
     def on_cut(self, *largs):
-        print "CUT", largs, self._text
+        print("CUT", largs, self._text)
         self.on_copy()
 
     def on_copy(self, *largs):
@@ -630,7 +631,7 @@ class CEFBrowserCutCopyPasteBubble(Bubble):
                     break
                 except:
                     pass
-        print "PASTE", t
+        print("PASTE", t)
 
 
 class ClientHandler():
@@ -747,10 +748,6 @@ class ClientHandler():
             return False
         else:
             return True
-
-    def RunModal(self, browser, *largs):
-        Logger.debug("CEFBrowser: RunModal\n\tBrowser: %s\n\tRemaining Args: %s", browser, largs)
-        return False
 
     def DoClose(self, browser):
         bw = self.browser_widgets[browser]
@@ -974,17 +971,38 @@ document.addEventListener("selectionchange", function (e) {
 
     def OnPaint(self, browser, paintElementType, dirtyRects, buf, width, height):
         #print("ON PAINT", browser, time.time())
-        b = buf.GetString(mode="bgra", origin="top-left")
+        if not hasattr(self, 'lastPaints'):
+            self.lastPaints = []
+        self.lastPaints.append(time.time())
+        while 10<len(self.lastPaints):
+            self.lastPaints.pop(0)
+        if 1<len(self.lastPaints):
+            Logger.debug("CEFBrowser: FPS: "+str(len(self.lastPaints)/(self.lastPaints[-1]-self.lastPaints[0])))
+        try:
+            pmvfm = ctypes.pythonapi.PyMemoryView_FromMemory
+            pmvfm.restype = ctypes.py_object
+            pmvfm.argtypes = (ctypes.c_void_p, ctypes.c_int64, ctypes.c_int)
+            view = pmvfm(buf.GetIntPointer(), width*height*4, 0x200)
+        except AttributeError:
+            """ # The following code gives a segmentation fault:
+            view = buffer('')
+            pbfi = ctypes.pythonapi.PyBuffer_FillInfo
+            pbfi.restype = ctypes.c_int
+            pbfi.argtypes = (ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int, ctypes.c_int)
+            res = pbfi(id(view), None, buf.GetIntPointer(), width*height*4, 0, 0)
+            print(pbfi, res)
+            """
+            view = buf.GetString(mode="bgra", origin="top-left")
         bw = self.browser_widgets[browser]
         if paintElementType != cefpython.PET_VIEW:
-            if bw._popup._texture.width*bw._popup._texture.height*4!=len(b):
+            if bw._popup._texture.width*bw._popup._texture.height*4!=width*height*4:
                 return True  # prevent segfault
-            bw._popup._texture.blit_buffer(b, colorfmt="bgra", bufferfmt="ubyte")
+            bw._popup._texture.blit_buffer(view, colorfmt="bgra", bufferfmt="ubyte")
             bw._popup._update_rect()
             return True
-        if bw._texture.width*bw._texture.height*4!=len(b):
+        if bw._texture.width*bw._texture.height*4!=width*height*4:
             return True  # prevent segfault
-        bw._texture.blit_buffer(b, colorfmt="bgra", bufferfmt="ubyte")
+        bw._texture.blit_buffer(view, colorfmt="bgra", bufferfmt="ubyte")
         bw._update_rect()
         return True
 

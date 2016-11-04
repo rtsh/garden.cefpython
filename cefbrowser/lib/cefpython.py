@@ -202,7 +202,7 @@ except ImportError:
             raise Exception("Unsupported python version: %s"%(sys.version, ))
     except:
         Logger.critical("CEFLoader: Failed to import cefpython")
-        raise Exception("Failed to import cefpython")
+        raise
 
 cefpython_loop_event = None
 
@@ -274,7 +274,7 @@ def cefpython_initialize(CEFBrowser):
         Logger.warning("CEFLoader: Failed to set up cookie manager: %s" % e)
 
     def cefpython_shutdown(*largs):
-        print "CEFPYTHON SHUTDOWN", largs, App.get_running_app()
+        print("CEFPYTHON SHUTDOWN", largs, App.get_running_app())
         cefpython.Shutdown()
         App.get_running_app().stop()
     def cefpython_exit(*largs):

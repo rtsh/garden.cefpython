@@ -20,7 +20,7 @@ from cefbrowser import CEFBrowser
 
 if __name__ == '__main__':
     # Create CEFBrowser instance. Go to JS binding test-site.
-    print "file://"+os.path.join(os.path.dirname(os.path.realpath(__file__)), "general.html")
+    print("file://"+os.path.join(os.path.dirname(os.path.realpath(__file__)), "general.html"))
     cb = CEFBrowser(url="file://"+os.path.join(os.path.dirname(os.path.realpath(__file__)), "general.html"))
 
     try:
@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
     # Define upcall (JS to Python) callback
     def test_result(res, exp, ident, desc, *largs):
-        print "callback in Python from JS", exp, ident, desc, largs
+        print("callback in Python from JS", exp, ident, desc, largs)
         def th(*largs):
             if ident=="focus":
                 time.sleep(1)
