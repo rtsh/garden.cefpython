@@ -18,5 +18,4 @@ if __name__ == '__main__':
             return CEFBrowser(url="http://www.rentouch.ch")
 
     SimpleBrowserApp().run()
-    cefpython.Shutdown()
 

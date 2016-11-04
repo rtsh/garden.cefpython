@@ -30,5 +30,4 @@ if __name__ == '__main__':
         def build(self):
             return cb
     JSBindBrowserApp().run()
-    cefpython.Shutdown()
 

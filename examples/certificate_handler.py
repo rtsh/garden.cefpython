@@ -27,5 +27,4 @@ if __name__ == '__main__':
             return cb
 
     SimpleBrowserApp().run()
-    cefpython.Shutdown()
 

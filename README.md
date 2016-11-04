@@ -17,7 +17,6 @@ Example
         def build(self):
             return CEFBrowser(url="http://kivy.org")
     SimpleBrowserApp().run()
-    cefpython.Shutdown()
 
 
 Status
