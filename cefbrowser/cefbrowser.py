@@ -7,6 +7,7 @@ browser. If you need controls or tabs, check out the `examples`
 
 __all__ = ("CEFBrowser")
 
+from kivy.core.clipboard import Clipboard
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 from kivy.graphics.texture import Texture
@@ -16,10 +17,12 @@ from kivy.logger import Logger
 from kivy.properties import *
 from kivy import resources
 from kivy.uix.behaviors import FocusBehavior
+from kivy.uix.bubble import Bubble, BubbleButton
 from kivy.uix.widget import Widget
 from lib.cefpython import cefpython, cefpython_initialize
 from cefkeyboard import CEFKeyboardManager
 
+import ctypes
 import json
 import os
 import random
@@ -30,6 +33,7 @@ Builder.load_file(resources.resource_find("cefbrowser.kv"))
 cef_browser_js_alert = Factory.CEFBrowserJSAlert()
 cef_browser_js_confirm = Factory.CEFBrowserJSConfirm()
 cef_browser_js_prompt = Factory.CEFBrowserJSPrompt()
+
 
 class CEFAlreadyInitialized(Exception):
     pass
@@ -57,7 +61,7 @@ class CEFBrowser(Widget, FocusBehavior):
     _cookies_path = None
     _logs_path = None
     _cookie_manager = None
-    
+
     # Instance Variables
     url = StringProperty("")
     """The URL of the (main frame of the) browser."""
@@ -112,8 +116,6 @@ class CEFBrowser(Widget, FocusBehavior):
     _browser = None
     _popup = None
     _texture = None
-    __rect = None
-    __keyboard_state = {}
 
     def __init__(self, url="", *largs, **dargs):
         self.url = url
@@ -121,10 +123,13 @@ class CEFBrowser(Widget, FocusBehavior):
         self.popup_handler = dargs.pop("popup_handler", CEFBrowser.fullscreen_popup)
         self.close_handler = dargs.pop("close_handler", CEFBrowser.do_nothing)
         self.keyboard_position = dargs.pop("keyboard_position", CEFBrowser.keyboard_position_optimal)
-        self.js = CEFBrowserJSProxy(self)
         self._browser = dargs.pop("browser", None)
         self._popup = CEFBrowserPopup(self)
+        self._selection_bubble = CEFBrowserCutCopyPasteBubble(self)
         self.__rect = None
+        self.__keyboard_state = {}
+        self.js = CEFBrowserJSProxy(self)
+
         super(CEFBrowser, self).__init__(**dargs)
 
         self.register_event_type("on_load_start")
@@ -174,7 +179,7 @@ class CEFBrowser(Widget, FocusBehavior):
             raise CEFAlreadyInitialized()
         CEFBrowser._command_line_switches.update(d)
         Logger.debug("CEFBrowser: update_command_line_switches => %s", CEFBrowser._command_line_switches)
-        #print "update_command_line_switches", cls._command_line_switches
+        #print("update_command_line_switches", cls._command_line_switches)
 
     @classmethod
     def update_settings(cls, d):
@@ -219,7 +224,7 @@ class CEFBrowser(Widget, FocusBehavior):
         if CEFBrowser._cefpython_initialized:
             raise CEFAlreadyInitialized()
         if not os.path.isdir(dp):
-            os.mkdir(dp, 0700)
+            os.mkdir(dp, 0o700)
         CEFBrowser._caches_path = os.path.join(dp, "caches")
         CEFBrowser._cookies_path = os.path.join(dp, "cookies")
         CEFBrowser._logs_path = os.path.join(dp, "logs")
@@ -317,7 +322,7 @@ class CEFBrowser(Widget, FocusBehavior):
         :param attributes: Attributes of HTML element
         """
         self.__keyboard_state = {"shown":shown, "rect":rect, "attributes":attributes}
-        #print("KB", self, self.__keyboard_state, self.parent, rect, attributes)
+        #print("KB", self.url, self.__keyboard_state, self.parent)
         if shown and self.parent: # No orphaned keyboards
             self.focus = True
             self.keyboard_position(self, self.keyboard.widget, rect, attributes)
@@ -455,7 +460,6 @@ class CEFBrowser(Widget, FocusBehavior):
                                 mouse_up=False, click_count=1
                             )
                             touch.is_dragging = True
-
         elif len(self._touches) == 2:
             # Scroll only if a minimal distance passed (could be right click)
             touch1, touch2 = self._touches[:2]
@@ -676,7 +680,7 @@ class CEFBrowserJSFunctionProxy():
     def __init__(self, browser_widget, key, *largs):
         self.browser_widget = browser_widget
         self.key = key
-    
+
     def __call__(self, *largs):
         js_code = str(self.key)+"("
         first = True
@@ -692,9 +696,9 @@ class CEFBrowserJSFunctionProxy():
 class CEFBrowserJSProxy():
     def __init__(self, browser_widget, *largs):
         self.browser_widget = browser_widget
-        self.__js_bindings_dict = {"__kivy__keyboard_update":browser_widget._keyboard_update}
+        self.__js_bindings_dict = {"__kivy__keyboard_update":browser_widget._keyboard_update, "__kivy__selection_update":browser_widget._selection_bubble._update}
         self.__js_bindings = None
-    
+
     def _inject(self):
         # When browser.Navigate() is called, some bug appears in CEF
         # that makes CefRenderProcessHandler::OnBrowserDestroyed()
@@ -710,15 +714,76 @@ class CEFBrowserJSProxy():
             self.browser_widget._browser.SetJavascriptBindings(self.__js_bindings)
         else:
             self.__js_bindings.Rebind()
-    
+
     def bind(self, **dargs):
         self.__js_bindings_dict.update(dargs)
         self.__js_bindings = None
         self._inject()
-    
+
     def __getattr__(self, key):
-        #print "getattr", key
         return CEFBrowserJSFunctionProxy(self.browser_widget, key)
+
+class CEFBrowserCutCopyPasteBubble(Bubble):
+    def __init__(self, browser_widget, *largs, **dargs):
+        super(CEFBrowserCutCopyPasteBubble, self).__init__(**dargs)
+        self.browser_widget = browser_widget
+        self.size_hint = (None, None)
+        self.size = (160, 80)
+        self.cutbut = BubbleButton(text="Cut")
+        self.cutbut.bind(on_press=self.on_cut)
+        self.add_widget(self.cutbut)
+        self.copybut = BubbleButton(text="Copy")
+        self.copybut.bind(on_press=self.on_copy)
+        self.add_widget(self.copybut)
+        self.pastebut = BubbleButton(text="Paste")
+        self.pastebut.bind(on_press=self.on_paste)
+        self.add_widget(self.pastebut)
+        self._options = {}
+        self._rect = [0,0,0,0]
+        self._text = ""
+
+    def _update(self, options, rect, text):
+        """
+        :param options: dict with keys `shown`, `can_cut`, `can_copy`, `can_paste`
+        :param rect: [x,y,width,height] of the selection
+        :param text: Text representation of selection content
+        """
+        #print("SEL", self.browser_widget.url, options, rect, text, self.browser_widget.parent)
+        if not self.browser_widget.parent:
+            options["shown"] = False
+        self.pos = (self.browser_widget.x+rect[0]+(rect[2]-self.width)/2, self.browser_widget.y+self.browser_widget.height-rect[1])
+        shown = ("shown" in options and options["shown"])
+        if shown and not self.parent:
+            Window.add_widget(self)
+        if not shown and self.parent:
+            Window.remove_widget(self)
+        self.cutbut.disabled = not ("can_cut" in options and options["can_cut"])
+        self.copybut.disabled = not ("can_copy" in options and options["can_copy"])
+        self.pastebut.disabled = not ("can_paste" in options and options["can_paste"])
+        self._options = options
+        self._rect = rect
+        self._text = text
+
+    def on_cut(self, *largs):
+        print("CUT", largs, self._text)
+        self.on_copy()
+
+    def on_copy(self, *largs):
+        Clipboard.put(self._text, "UTF8_STRING")
+        Clipboard.put(self._text, "TEXT")
+        Clipboard.put(self._text, "STRING")
+        Clipboard.put(self._text, "text/plain")
+
+    def on_paste(self, *largs):
+        t = False
+        for type in Clipboard.get_types():
+            if type in ("UTF8_STRING", "TEXT", "STRING", "text/plain"):
+                try:
+                    t = Clipboard.get(type)
+                    break
+                except:
+                    pass
+        print("PASTE", t)
 
 
 class ClientHandler():
@@ -791,9 +856,9 @@ class ClientHandler():
 
     def OnJavascriptDialog(self, browser, originUrl, dialogType, messageText, defaultPromptText, callback, suppressMessage, *largs):
         dialog_types = {
-            cefpython.JSDIALOGTYPE_ALERT:["alert", cef_browser_js_alert],
-            cefpython.JSDIALOGTYPE_CONFIRM:["confirm", cef_browser_js_confirm],
-            cefpython.JSDIALOGTYPE_PROMPT:["prompt", cef_browser_js_prompt],
+            cefpython.JSDIALOGTYPE_ALERT:["alert", CEFBrowser._js_alert],
+            cefpython.JSDIALOGTYPE_CONFIRM:["confirm", CEFBrowser._js_confirm],
+            cefpython.JSDIALOGTYPE_PROMPT:["prompt", CEFBrowser._js_prompt],
         }
         # print("OnJavascriptDialog", browser, originUrl, dialog_types[dialogType][0], messageText, defaultPromptText, callback, suppressMessage, largs)
 
@@ -812,7 +877,7 @@ class ClientHandler():
         def js_continue(allow, user_input):
             self.active_js_dialog = None
             callback.Continue(allow, user_input)
-        p = cef_browser_js_confirm
+        p = CEFBrowser._js_confirm
         p.text = message_text
         p.js_continue = js_continue
         p.default_prompt_text = ""
@@ -835,7 +900,7 @@ class ClientHandler():
     # LifeSpanHandler
 
     def OnBeforePopup(self, browser, frame, target_url, target_frame_name, target_disposition, user_gesture, popup_features, window_info, client, browser_settings, no_javascript_access, *largs):
-        Logger.debug("CEFBrowser: OnBeforePopup\n\tBrowser: %s\n\tFrame: %s\n\tURL: %s\n\tFrame Name: %s\n\tTarget disposition: %s\n\tUser gesture: %s\n\tPopup Features: %s\n\tWindow Info: %s\n\tClient: %s\n\tBrowser Settings: %s\n\tNoJSAccess: %s\n\tRemaining Args: %s", browser, frame, target_url, target_frame_name, target_disposition, user_gesture, popup_features, window_info, client, browser_settings, no_javascript_access, largs)
+        Logger.debug("CEFBrowser: OnBeforePopup\n\tBrowser: %s\n\tFrame: %s\n\tURL: %s\n\tFrame Name: %s\n\tTarget Disposition: %s\n\tUser Gesture: %s\n\tPopup Features: %s\n\tWindow Info: %s\n\tClient: %s\n\tBrowser Settings: %s\n\tNo Javascript Access: %s\n\tRemaining Args: %s", browser, frame, target_url, target_frame_name, target_disposition, user_gesture, popup_features, window_info, client, browser_settings, no_javascript_access, largs)
         bw = self.browser_widgets[browser]
         if hasattr(bw.popup_policy, "__call__"):
             try:
@@ -859,13 +924,11 @@ class ClientHandler():
         else:
             return True
 
-    """def RunModal(self, browser, *largs):
-        Logger.debug("CEFBrowser: RunModal\n\tBrowser: %s\n\tRemaining Args: %s", browser, largs)
-        return False"""
-
     def DoClose(self, browser):
         bw = self.browser_widgets[browser]
         bw.focus = False
+        if bw._selection_bubble.parent:
+            bw._selection_bubble.parent.remove_widget(bw._selection_bubble)
         if hasattr(bw.close_handler, "__call__"):
             try:
                 bw.close_handler(bw)
@@ -890,11 +953,19 @@ class ClientHandler():
         if bw:
             bw._browser.SendFocusEvent(True)
             jsCode = """
+
+// Dirty Bugfixes
+
 window.print = function () {
     console.log("Print dialog blocked");
 };
 
+
+// Keyboard management
+
 var __kivy__activeKeyboardElement = false;
+var __kivy__activeKeyboardElementSince = false;
+var __kivy__activeKeyboardElementSelection = false;
 var __kivy__updateRectTimer = false;
 var __kivy__lastRect = [];
 
@@ -916,20 +987,23 @@ function __kivy__isKeyboardElement(elem) {
 
 function __kivy__getAttributes(elem) {
     var attributes = {};
-    for (var att, i = 0, atts = elem.attributes, n = atts.length; i < n; i++) {
-        att = atts[i];
-        attributes[att.nodeName] = att.nodeValue;
+    var atts = elem.attributes;
+    if (atts) {
+        var n = atts.length;
+        for (var i=0; i < n; i++) {
+            var att = atts[i];
+            attributes[att.nodeName] = att.nodeValue;
+        }
     }
     return attributes;
 }
 
-function __kivy__getRect(elem) {
+function __kivy__getRect(elem) { // This takes into account frame position in parent frame recursively
     var w = window;
     var lrect = [0,0,0,0];
     while (elem && w) {
         try {
             var rect = elem.getBoundingClientRect();
-            console.log(rect.left+", "+rect.top+", "+rect.width+", "+rect.height);
             lrect[0] += rect.left;
             lrect[1] += rect.top;
             if (lrect[2]==0) lrect[2] = rect.width;
@@ -937,7 +1011,6 @@ function __kivy__getRect(elem) {
             elem = w.frameElement;
             w = w.parent;
         } catch (err) {
-            console.log(err.toString());
             elem = false;
         }
     }
@@ -945,22 +1018,23 @@ function __kivy__getRect(elem) {
 }
 
 window.addEventListener("focus", function (e) {
-    var lrect = __kivy__getRect(e.target);
-    var attributes = __kivy__getAttributes(e.target);
     var ike = __kivy__isKeyboardElement(e.target);
-    console.log("focus "+e.target.toString()+JSON.stringify(attributes)+JSON.stringify(ike));
-    __kivy__keyboard_update(ike, lrect, attributes);
     __kivy__activeKeyboardElement = (ike?e.target:false);
-    __kivy__lastRect = lrect;
+    __kivy__activeKeyboardElementSince = new Date().getTime();
+    __kivy__activeKeyboardElementSelection = false;
+    __kivy__lastRect = __kivy__getRect(e.target);
+    var attributes = __kivy__getAttributes(e.target);
+    __kivy__keyboard_update(ike, __kivy__lastRect, attributes);
+    __kivy__updateSelection();
 }, true);
 
 window.addEventListener("blur", function (e) {
-    var lrect = __kivy__getRect(e.target);
-    var attributes = __kivy__getAttributes(e.target);
-    console.log("blur "+e.target.toString()+JSON.stringify(attributes));
-    __kivy__keyboard_update(false, lrect, attributes);
+    __kivy__keyboard_update(false, [], {});
     __kivy__activeKeyboardElement = false;
+    __kivy__activeKeyboardElementSince = new Date().getTime();
+    __kivy__activeKeyboardElementSelection = false;
     __kivy__lastRect = [];
+    __kivy__updateSelection();
 }, true);
 
 function __kivy__updateRect() {
@@ -978,6 +1052,12 @@ window.addEventListener("scroll", function (e) {
     if (__kivy__updateRectTimer) window.clearTimeout(__kivy__updateRectTimer);
     __kivy__updateRectTimer = window.setTimeout(__kivy__updateRect, 25);
 }, true);
+window.addEventListener("click", function (e) {
+    if (e.target==__kivy__activeKeyboardElement && 750<(new Date().getTime()-__kivy__activeKeyboardElementSince)) {
+        __kivy__activeKeyboardElementSelection = true; // TODO: only if selection stays the same
+        __kivy__updateSelection();
+    }
+}, true);
 
 function __kivy__on_escape() {
     if (__kivy__activeKeyboardElement) __kivy__activeKeyboardElement.blur();
@@ -989,6 +1069,36 @@ function __kivy__on_escape() {
 //    ae.focus();
 //}
 __kivy__updateRectTimer = window.setTimeout(__kivy__updateRect, 1000);
+
+
+// Selection (Cut, Copy, Paste) management
+
+function __kivy__updateSelection() {
+    if (__kivy__activeKeyboardElement) {
+        var lrect = __kivy__getRect(__kivy__activeKeyboardElement);
+        var sstart = __kivy__activeKeyboardElement.selectionStart;
+        var send = __kivy__activeKeyboardElement.selectionEnd;
+        __kivy__selection_update({"shown":(__kivy__activeKeyboardElementSelection || send!=sstart), "can_cut":(send!=sstart), "can_copy":(send!=sstart), "can_paste":true}, lrect, __kivy__activeKeyboardElement.value.substr(sstart, send-sstart));
+    } else {
+        try {
+            var s = window.getSelection();
+            var r = s.getRangeAt(0);
+            if (r.startContainer==r.endContainer && r.startOffset==r.endOffset) { // No selection
+                __kivy__selection_update({"shown":false}, [0,0,0,0], "");
+            } else {
+                var lrect = __kivy__getRect(r);
+                __kivy__selection_update({"shown":true, "can_cut":false, "can_copy":true, "can_paste":false}, lrect, s.toString());
+            }
+        } catch (err) {
+            __kivy__selection_update({"shown":false}, [0,0,0,0], "");
+        }
+    }
+}
+
+document.addEventListener("selectionchange", function (e) {
+    __kivy__updateSelection();
+});
+
 """
             frame.ExecuteJavascript(jsCode)
 
@@ -1036,17 +1146,38 @@ __kivy__updateRectTimer = window.setTimeout(__kivy__updateRect, 1000);
 
     def OnPaint(self, browser, paintElementType, dirtyRects, buf, width, height):
         #print("ON PAINT", browser, time.time())
-        b = buf.GetString(mode="bgra", origin="top-left")
+        if not hasattr(self, 'lastPaints'):
+            self.lastPaints = []
+        self.lastPaints.append(time.time())
+        while 10<len(self.lastPaints):
+            self.lastPaints.pop(0)
+        if 1<len(self.lastPaints):
+            Logger.debug("CEFBrowser: FPS: "+str(len(self.lastPaints)/(self.lastPaints[-1]-self.lastPaints[0])))
+        try:
+            pmvfm = ctypes.pythonapi.PyMemoryView_FromMemory
+            pmvfm.restype = ctypes.py_object
+            pmvfm.argtypes = (ctypes.c_void_p, ctypes.c_int64, ctypes.c_int)
+            view = pmvfm(buf.GetIntPointer(), width*height*4, 0x200)
+        except AttributeError:
+            """ # The following code gives a segmentation fault:
+            view = buffer('')
+            pbfi = ctypes.pythonapi.PyBuffer_FillInfo
+            pbfi.restype = ctypes.c_int
+            pbfi.argtypes = (ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int, ctypes.c_int)
+            res = pbfi(id(view), None, buf.GetIntPointer(), width*height*4, 0, 0)
+            print(pbfi, res)
+            """
+            view = buf.GetString(mode="bgra", origin="top-left")
         bw = self.browser_widgets[browser]
         if paintElementType != cefpython.PET_VIEW:
-            if bw._popup._texture.width*bw._popup._texture.height*4!=len(b):
+            if bw._popup._texture.width*bw._popup._texture.height*4!=width*height*4:
                 return True  # prevent segfault
-            bw._popup._texture.blit_buffer(b, colorfmt="bgra", bufferfmt="ubyte")
+            bw._popup._texture.blit_buffer(view, colorfmt="bgra", bufferfmt="ubyte")
             bw._popup._update_rect()
             return True
-        if bw._texture.width*bw._texture.height*4!=len(b):
+        if bw._texture.width*bw._texture.height*4!=width*height*4:
             return True  # prevent segfault
-        bw._texture.blit_buffer(b, colorfmt="bgra", bufferfmt="ubyte")
+        bw._texture.blit_buffer(view, colorfmt="bgra", bufferfmt="ubyte")
         bw._update_rect()
         return True
 
@@ -1126,6 +1257,12 @@ def OnCertificateError(err, url, cb):
             Logger.warning("CEFBrowser: Error in certificate error handler.\n%s", err)
 cefpython.SetGlobalClientCallback("OnCertificateError", OnCertificateError)
 
+Builder.load_file(os.path.join(os.path.realpath(os.path.dirname(__file__)), "cefbrowser.kv"))
+CEFBrowser._js_alert = Factory.CEFBrowserJSAlert()
+CEFBrowser._js_confirm = Factory.CEFBrowserJSConfirm()
+CEFBrowser._js_prompt = Factory.CEFBrowserJSPrompt()
+
+
 if __name__ == "__main__":
     import os
     from kivy.app import App
@@ -1192,4 +1329,3 @@ if __name__ == "__main__":
     CEFBrowserApp().run()
 
     cefpython.Shutdown()
-
