@@ -55,6 +55,15 @@ How to develop with virtualenv and prebuilt packages from Rentouch (Py2.7 & Linu
 6. Now you should be able to launch one of the examples: `venv/bin/python examples/minimal.py`
 
 
+How to develop with virtualenv and prebuilt packages from Rentouch (Py3 & Linux)
+----------------------------------------------------------------------------------
+Basically you have to follow the steps for 2.7 above:
+1. virtualenv 3venv
+2. 3venv/bin/pip install Kivy==1.9.2-dev0xinput4 --index-url https://wheels.rentouch.ch --trusted-host wheels.rentouch.ch
+3. 3venv/bin/pip install cefpython3
+4. ln -s path/to/this/garden.cefpython ~/.kivy/garden/garden.cefpython
+
+
 Known Issues
 ------------
 
