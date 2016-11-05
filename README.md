@@ -51,8 +51,9 @@ How to develop with virtualenv and prebuilt packages from Rentouch (Py2.7 & Linu
 3. Install Kivy into venv: `venv/bin/pip install Kivy==1.9.2-dev0xinput4 --index-url https://wheels.rentouch.ch`
    If you get an cert-mismatch error: use: `venv/bin/pip install Kivy==1.9.2-dev0xinput4 --index-url https://wheels.rentouch.ch --trusted-host wheels.rentouch.ch`
 4. Install other required libraries (as Cefpython) by: `venv/bin/pip install -r requirements.txt --index-url https://wheels.rentouch.ch --trusted-host wheels.rentouch.ch`
-5. Symlink garden.cefpython into graden directory: `ln -s path/to/this/garden.cefpython ~/.kivy/garden/garden.cefpython`
-6. Now you should be able to launch one of the examples: `venv/bin/python examples/minimal.py`
+5. Create garden folder if not existing: `mkdir ~/.kivy/garden`
+6. Symlink garden.cefpython into graden directory: `ln -s path/to/this/garden.cefpython ~/.kivy/garden/garden.cefpython`
+7. Now you should be able to launch one of the examples: `venv/bin/python examples/minimal.py`
 
 
 How to develop with virtualenv and prebuilt packages from Rentouch (Py3 & Linux)
