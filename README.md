@@ -46,22 +46,24 @@ How to develop with virtualenv
 
 How to develop with virtualenv and prebuilt packages from Rentouch (Py2.7 & Linux)
 ----------------------------------------------------------------------------------
-1. Create a virtual: 'virtualenv venv'
-2. Update Pip: 'venv/bin/pip install -U pip'
-3. Install Kivy into venv: 'venv/bin/pip install Kivy==1.9.2-dev0xinput4 --index-url https://wheels.rentouch.ch'
-   If you get an cert-mismatch error: use: 'venv/bin/pip install Kivy==1.9.2-dev0xinput4 --index-url https://wheels.rentouch.ch --trusted-host wheels.rentouch.ch'
-4. Install other required libraries (as Cefpython) by: 'venv/bin/pip install -r requirements.txt --index-url https://wheels.rentouch.ch --trusted-host wheels.rentouch.ch'
-5. Symlink garden.cefpython into graden directory: `ln -s path/to/this/garden.cefpython ~/.kivy/garden/garden.cefpython`
-6. Now you should be able to launch one of the examples: `venv/bin/python examples/minimal.py`
+1. Create a virtual: `virtualenv venv`
+2. Update Pip: `venv/bin/pip install -U pip`
+3. Install Kivy into venv: `venv/bin/pip install Kivy==1.9.2-dev0xinput4 --index-url https://wheels.rentouch.ch`
+   If you get an cert-mismatch error: use: `venv/bin/pip install Kivy==1.9.2-dev0xinput4 --index-url https://wheels.rentouch.ch --trusted-host wheels.rentouch.ch`
+4. Install other required libraries (as Cefpython) by: `venv/bin/pip install -r requirements.txt --index-url https://wheels.rentouch.ch --trusted-host wheels.rentouch.ch`
+5. Create garden folder if not existing: `mkdir ~/.kivy/garden`
+6. Symlink garden.cefpython into graden directory: `ln -s path/to/this/garden.cefpython ~/.kivy/garden/garden.cefpython`
+7. Now you should be able to launch one of the examples: `venv/bin/python examples/minimal.py`
 
 
 How to develop with virtualenv and prebuilt packages from Rentouch (Py3 & Linux)
 ----------------------------------------------------------------------------------
 Basically you have to follow the steps for 2.7 above:
-1. virtualenv 3venv
-2. 3venv/bin/pip install Kivy==1.9.2-dev0xinput4 --index-url https://wheels.rentouch.ch --trusted-host wheels.rentouch.ch
-3. 3venv/bin/pip install cefpython3
-4. ln -s path/to/this/garden.cefpython ~/.kivy/garden/garden.cefpython
+
+1. `virtualenv -p python3 3venv`
+2. `3venv/bin/pip install Kivy==1.9.2-dev0xinput4 --index-url https://wheels.rentouch.ch --trusted-host wheels.rentouch.ch`
+3. `3venv/bin/pip install cefpython3`
+4. `ln -s path/to/this/garden.cefpython ~/.kivy/garden/garden.cefpython`
 
 
 Known Issues
