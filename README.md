@@ -23,7 +23,7 @@ Status
 ------
 
 This project shouldn't be considered stable. There are many things, as 
-e.g. downloads or keyboard input which aren't implemented or causing proplems.
+e.g. downloads which aren't implemented or causing proplems.
 Tested on Ubuntu 14.04.1 LTS 64bit with the following debian packages
 installed:
 - `libnss3-1d`
