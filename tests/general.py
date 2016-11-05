@@ -14,14 +14,32 @@ import time
 import threading
 
 from kivy.app import App
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'cefbrowser'))
 from cefbrowser import CEFBrowser
 
 
 if __name__ == '__main__':
+    CEFBrowser.update_flags({'enable-copy-paste':True, 'enable-fps':True})
     # Create CEFBrowser instance. Go to JS binding test-site.
-    print("file://"+os.path.join(os.path.dirname(os.path.realpath(__file__)), "general.html"))
-    cb = CEFBrowser(url="file://"+os.path.join(os.path.dirname(os.path.realpath(__file__)), "general.html"))
+    try:
+        from http.server import BaseHTTPRequestHandler, HTTPServer
+    except:
+        from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+    class RequestHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            filePath = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', *self.path.split('/'))
+            if not os.path.isfile(filePath):
+                self.send_response(404)
+                self.end_headers()
+                return
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(open(filePath, 'rb').read())
+    httpd = HTTPServer(('', 8081), RequestHandler)
+    threading.Thread(target=httpd.serve_forever, args=()).start()
+
+    print("http://localhost:8081/general.html")
+    cb = CEFBrowser(url="http://localhost:8081/general.html")
 
     try:
         print(cb._browser.GetDevToolsURL())

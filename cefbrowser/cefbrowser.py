@@ -1158,13 +1158,14 @@ document.addEventListener("selectionchange", function (e) {
 
     def OnPaint(self, browser, paintElementType, dirtyRects, buf, width, height):
         #print("ON PAINT", browser, time.time())
-        if not hasattr(self, 'lastPaints'):
-            self.lastPaints = []
-        self.lastPaints.append(time.time())
-        while 10<len(self.lastPaints):
-            self.lastPaints.pop(0)
-        if 1<len(self.lastPaints):
-            Logger.debug("CEFBrowser: FPS: "+str(len(self.lastPaints)/(self.lastPaints[-1]-self.lastPaints[0])))
+        if 'enable-fps' in CEFBrowser._flags:
+            if not hasattr(self, 'lastPaints'):
+                self.lastPaints = []
+            self.lastPaints.append(time.time())
+            while 10<len(self.lastPaints):
+                self.lastPaints.pop(0)
+            if 1<len(self.lastPaints):
+                Logger.debug("CEFBrowser: FPS: "+str(len(self.lastPaints)/(self.lastPaints[-1]-self.lastPaints[0])))
         try:
             pmvfm = ctypes.pythonapi.PyMemoryView_FromMemory
             pmvfm.restype = ctypes.py_object
@@ -1282,7 +1283,7 @@ if __name__ == "__main__":
     from kivy.uix.button import Button
     from kivy.uix.textinput import TextInput
     cef_test_url = "file://"+os.path.join(os.path.dirname(os.path.realpath(__file__)), "test.html")
-    CEFBrowser.update_flags({'enable-copy-paste':True})
+    CEFBrowser.update_flags({'enable-copy-paste':True, 'enable-fps':True})
     class CEFBrowserApp(App):
         def timeout(self, *largs):
             self.cb1.url = cef_test_url

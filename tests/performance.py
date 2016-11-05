@@ -44,8 +44,8 @@ if __name__ == '__main__':
 
     def update(*largs):
         global r, w
-        print "BEF", w, r.texture, r.texture.width, r.texture.height
-        half = (w.size[0]*w.size[1]*texture_size_hint*texture_size_hint/2)
+        print("BEF", w, r.texture, r.texture.width, r.texture.height)
+        half = int(w.size[0]*w.size[1]*texture_size_hint*texture_size_hint/2)
         if not w.mv:
             r.texture = Texture.create(size=(w.size[0]*texture_size_hint, w.size[1]*texture_size_hint), colorfmt="rgba", bufferfmt="ubyte")
             w.ba = bytearray([255,0,0]*half+[0,255,0]*half)
@@ -55,9 +55,9 @@ if __name__ == '__main__':
                 w.ba[i] = 255
         beg = time.time()
         r.texture.blit_buffer(w.mv)
-        print time.time()-beg
+        print(time.time()-beg)
         r.size = w.size
-        print "AFT", w, r.texture, r.texture.width, r.texture.height
+        print("AFT", w, r.texture, r.texture.width, r.texture.height)
     Clock.schedule_interval(update, 2)
 
     PerformanceTesterApp().run()
