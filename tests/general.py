@@ -87,4 +87,7 @@ if __name__ == '__main__':
             return cb
             # http://demo.redminecrm.com/projects/agile/agile/board
 
+        def on_stop(self, *largs):
+            httpd.shutdown()
+
     SimpleBrowserApp().run()
