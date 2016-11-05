@@ -10,7 +10,7 @@ __all__ = ('CEFKeyboardManager')
 
 from kivy.core.window import Window
 from kivy.uix.vkeyboard import VKeyboard
-from lib.cefpython import cefpython
+from .lib.cefpython import cefpython
 
 
 class CEFKeyboardManagerSingleton():

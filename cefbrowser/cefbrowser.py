@@ -19,8 +19,8 @@ from kivy import resources
 from kivy.uix.behaviors import FocusBehavior
 from kivy.uix.bubble import Bubble, BubbleButton
 from kivy.uix.widget import Widget
-from lib.cefpython import cefpython, cefpython_initialize
-from cefkeyboard import CEFKeyboardManager
+from .lib.cefpython import cefpython, cefpython_initialize
+from .cefkeyboard import CEFKeyboardManager
 
 import ctypes
 import json
