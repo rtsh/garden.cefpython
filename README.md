@@ -58,6 +58,7 @@ How to develop with virtualenv and prebuilt packages from Rentouch (Py2.7 & Linu
 How to develop with virtualenv and prebuilt packages from Rentouch (Py3 & Linux)
 ----------------------------------------------------------------------------------
 Basically you have to follow the steps for 2.7 above:
+
 1. `virtualenv 3venv`
 2. `3venv/bin/pip install Kivy==1.9.2-dev0xinput4 --index-url https://wheels.rentouch.ch --trusted-host wheels.rentouch.ch`
 3. `3venv/bin/pip install cefpython3`
