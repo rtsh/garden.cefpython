@@ -1,6 +1,7 @@
 .DS_Store
 *.pyc
 *~
+3venv
 .idea
 *debug.log
 cefbrowser/lib/cefpython/*
