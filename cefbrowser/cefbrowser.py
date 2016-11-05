@@ -52,11 +52,15 @@ class CEFBrowser(Widget, FocusBehavior):
     If `certificate_error_handler` is None or cannot be executed, the default
     is False."""
     _cefpython_initialized = False
+    _flags = {}
+    """Flags for CEFBrowser"""
     _command_line_switches = {
         "ppapi-flash-path":
             "/opt/google/chrome/PepperFlash/libpepflashplayer.so",
         "disable-gpu-compositing": ""}
+    """Command line switches for cefpython"""
     _settings = {}
+    """Settings for cefpython"""
     _caches_path = None
     _cookies_path = None
     _logs_path = None
@@ -170,6 +174,12 @@ class CEFBrowser(Widget, FocusBehavior):
         self.bind(focus=self._on_focus)
         self.html5_drag_representation = Factory.HTML5DragIcon()
         self.js._inject()
+
+    @classmethod
+    def update_flags(cls, d):
+        """ Updates the flags for CEFBrowser with the options given in the dict `d`.
+        For possible keys and values, see the docs."""
+        CEFBrowser._flags.update(d)
 
     @classmethod
     def update_command_line_switches(cls, d):
@@ -748,6 +758,8 @@ class CEFBrowserCutCopyPasteBubble(Bubble):
         :param rect: [x,y,width,height] of the selection
         :param text: Text representation of selection content
         """
+        if not 'enable-copy-paste' in CEFBrowser._flags:
+            return
         #print("SEL", self.browser_widget.url, options, rect, text, self.browser_widget.parent)
         if not self.browser_widget.parent:
             options["shown"] = False
@@ -1270,6 +1282,7 @@ if __name__ == "__main__":
     from kivy.uix.button import Button
     from kivy.uix.textinput import TextInput
     cef_test_url = "file://"+os.path.join(os.path.dirname(os.path.realpath(__file__)), "test.html")
+    CEFBrowser.update_flags({'enable-copy-paste':True})
     class CEFBrowserApp(App):
         def timeout(self, *largs):
             self.cb1.url = cef_test_url
