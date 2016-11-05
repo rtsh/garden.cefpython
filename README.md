@@ -24,7 +24,7 @@ Status
 
 This project shouldn't be considered stable. There are many things, as 
 e.g. downloads or keyboard input which aren't implemented or causing proplems.
-Tested on Ubuntu 14.04.1 LTS 64bit with the follwoing debian packages
+Tested on Ubuntu 14.04.1 LTS 64bit with the following debian packages
 installed:
 - `libnss3-1d`
 - `libnspr4-0d`
@@ -42,6 +42,17 @@ How to develop with virtualenv
 3. Install other dependencies into virtualenv: `venv/bin/pip install -r requirements.txt`
 4. Symlink cefbrowser into graden directory: `ln -s path/to/gardne.cefpython ~/.kivy/garden/garden.cefpython`
 5. Now you should be able to launch one of the examples: `venv/bin/python examples/minimal.py`
+
+
+How to develop with virtualenv and prebuilt packages from Rentouch (Py2.7 & Linux)
+----------------------------------------------------------------------------------
+1. Create a virtual: 'virtualenv venv'
+2. Update Pip: 'venv/bin/pip install -U pip'
+3. Install Kivy into venv: 'venv/bin/pip install Kivy==1.9.2-dev0xinput4 --index-url https://wheels.rentouch.ch'
+   If you get an cert-mismatch error: use: 'venv/bin/pip install Kivy==1.9.2-dev0xinput4 --index-url https://wheels.rentouch.ch --trusted-host wheels.rentouch.ch'
+4. Install other required libraries (as Cefpython) by: 'venv/bin/pip install -r requirements.txt --index-url https://wheels.rentouch.ch --trusted-host wheels.rentouch.ch'
+5. Symlink garden.cefpython into graden directory: `ln -s path/to/this/garden.cefpython ~/.kivy/garden/garden.cefpython`
+6. Now you should be able to launch one of the examples: `venv/bin/python examples/minimal.py`
 
 
 Known Issues
