@@ -27,7 +27,12 @@ if __name__ == '__main__':
         from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
     class RequestHandler(BaseHTTPRequestHandler):
         def do_GET(self):
-            filePath = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', *self.path.split('/'))
+            filePathComponents = self.path.split('/')
+            try:
+                filePathComponents[-1] = filePathComponents[-1][:filePathComponents[-1].index('?')]
+            except:
+                pass
+            filePath = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', *filePathComponents)
             if not os.path.isfile(filePath):
                 self.send_response(404)
                 self.end_headers()
@@ -41,10 +46,6 @@ if __name__ == '__main__':
     print("http://localhost:8081/general.html")
     cb = CEFBrowser(url="http://localhost:8081/general.html")
 
-    try:
-        print(cb._browser.GetDevToolsURL())
-    except:
-        print("You are not using the GetDevToolsURL extension of cefpython.")
     # cb._browser.ShowDevTools()
 
     # Define upcall (JS to Python) callback
