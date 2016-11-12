@@ -43,7 +43,7 @@ class CEFKeyboardManagerSingleton():
         self.process_key_down(browser, None, keycode, text, modifiers)
     
     def kivy_on_key_down(self, browser, keyboard, keycode, text, modifiers):
-        whitelist = (8, 27)
+        whitelist = (9, 8, 13, 27)
         if Window.__class__.__module__ == 'kivy.core.window.window_sdl2' and \
                 (keycode[0] not in whitelist):
             return
@@ -75,6 +75,10 @@ class CEFKeyboardManagerSingleton():
                 "__kivy__on_escape()")
             return
 
+        # Modify text for enter key
+        if key[0] == 13:
+            text = "\r"
+
         # CEF modifiers
         # When pressing ctrl also set modifiers for ctrl
         if key[0] in (306, 305):
@@ -94,6 +98,17 @@ class CEFKeyboardManagerSingleton():
         if text:
             charcode = ord(text)
 
+        # Send key event to cef: RAWKEYDOWN
+        keyEvent = {
+                "type": cefpython.KEYEVENT_RAWKEYDOWN,
+                "windows_key_code": keycode,
+                "character": charcode,
+                "unmodified_character": charcode,
+                "modifiers": cef_modifiers,
+        }
+        # print("- DOWN SendKeyEvent: %s" % keyEvent)
+        browser.SendKeyEvent(keyEvent)
+
         # Send key event to cef: CHAR
         if text:
             keyEvent = {
@@ -103,18 +118,7 @@ class CEFKeyboardManagerSingleton():
                     "unmodified_character": charcode,
                     "modifiers": cef_modifiers
             }
-            # print("- SendKeyEvent: %s" % keyEvent)
-            browser.SendKeyEvent(keyEvent)
-        else:
-            # Send key event to cef: RAWKEYDOWN
-            keyEvent = {
-                    "type": cefpython.KEYEVENT_RAWKEYDOWN,
-                    "windows_key_code": keycode,
-                    "character": charcode,
-                    "unmodified_character": charcode,
-                    "modifiers": cef_modifiers,
-            }
-            # print("- SendKeyEvent: %s" % keyEvent)
+            # print("- DOWN text SendKeyEvent: %s" % keyEvent)
             browser.SendKeyEvent(keyEvent)
 
         if key[0] == 304:
@@ -159,7 +163,7 @@ class CEFKeyboardManagerSingleton():
                 "unmodified_character": charcode,
                 "modifiers": cef_modifiers
         }
-        # print("- SendKeyEvent: %s" % keyEvent)
+        # print("- UP SendKeyEvent: %s" % keyEvent)
         browser.SendKeyEvent(keyEvent)
 
         if key[0] == 304:

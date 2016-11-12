@@ -394,11 +394,11 @@ class CEFBrowser(Widget, FocusBehavior):
         return False
 
     def keyboard_on_key_down(self, *largs):
-        #print("KEY DOWN", largs)
+        # print("KEY DOWN", largs)
         CEFKeyboardManager.kivy_on_key_down(self._browser, *largs)
 
     def keyboard_on_key_up(self, *largs):
-        #print("KEY UP", largs)
+        # print("KEY UP", largs)
         CEFKeyboardManager.kivy_on_key_up(self._browser, *largs)
 
     def keyboard_on_textinput(self, window, text):
