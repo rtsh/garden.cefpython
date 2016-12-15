@@ -1265,7 +1265,7 @@ def OnCertificateError(err, url, cb):
             res = CEFBrowser.certificate_error_handler(CEFBrowser(), err, url)
             if res:
                 cb.Continue(True)
-                return
+                return True
         except Exception as err:
             Logger.warning("CEFBrowser: Error in certificate error handler.\n%s", err)
 cefpython.SetGlobalClientCallback("OnCertificateError", OnCertificateError)
