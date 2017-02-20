@@ -98,16 +98,18 @@ class CEFKeyboardManagerSingleton():
         if text:
             charcode = ord(text)
 
-        # Send key event to cef: RAWKEYDOWN
-        keyEvent = {
-                "type": cefpython.KEYEVENT_RAWKEYDOWN,
-                "windows_key_code": keycode,
-                "character": charcode,
-                "unmodified_character": charcode,
-                "modifiers": cef_modifiers,
-        }
-        # print("- DOWN SendKeyEvent: %s" % keyEvent)
-        browser.SendKeyEvent(keyEvent)
+        # Do not send RAW-key for key-codes 35-40 aka ($#%&
+        if key[0] not in range(35, 40):
+            # Send key event to cef: RAWKEYDOWN
+            keyEvent = {
+                    "type": cefpython.KEYEVENT_RAWKEYDOWN,
+                    "windows_key_code": keycode,
+                    "character": charcode,
+                    "unmodified_character": charcode,
+                    "modifiers": cef_modifiers,
+            }
+            # print("- DOWN RAW SendKeyEvent: %s" % keyEvent)
+            browser.SendKeyEvent(keyEvent)
 
         # Send key event to cef: CHAR
         if text:
