@@ -99,7 +99,7 @@ class CEFKeyboardManagerSingleton():
             charcode = ord(text)
 
         # Do not send RAW-key for key-codes 35-40 aka ($#%&
-        if key[0] not in range(35, 40):
+        if key[0] not in range(35, 40+1):
             # Send key event to cef: RAWKEYDOWN
             keyEvent = {
                     "type": cefpython.KEYEVENT_RAWKEYDOWN,
