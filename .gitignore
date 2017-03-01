@@ -2,6 +2,9 @@
 *.pyc
 *~
 3venv
+venv
+garden.cefpython
+2garden.cefpython
 .idea
 *debug.log
 cefbrowser/lib/cefpython/*
