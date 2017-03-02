@@ -822,14 +822,14 @@ class ClientHandler():
             pass
             #print("TODO: Address changed in Frame")
 
-    def OnTitleChange(self, browser, new_title):
-        self.browser_widgets[browser].title = new_title
+    def OnTitleChange(self, browser, title):
+        self.browser_widgets[browser].title = title
 
     def OnTooltip(self, *largs):
         return True  # We handled it. And did do nothing about it. :O
 
-    def OnStatusMessage(self, browser, message):
-        Logger.info("CEFBrowser: Status: %s", message)
+    def OnStatusMessage(self, browser, value):
+        Logger.info("CEFBrowser: Status: %s", value)
 
     def OnConsoleMessage(self, browser, message, source, line):
         Logger.info("CEFBrowser: Console: %s - %s(%i)", message, source, line)
@@ -866,7 +866,7 @@ class ClientHandler():
     # JavascriptDialogHandler
     active_js_dialog = None
 
-    def OnJavascriptDialog(self, browser, originUrl, dialogType, messageText, defaultPromptText, callback, suppressMessage, *largs):
+    def OnJavascriptDialog(self, browser, origin_url, dialog_type, message_text, default_prompt_text, callback, suppress_message_out, *largs):
         dialog_types = {
             cefpython.JSDIALOGTYPE_ALERT:["alert", CEFBrowser._js_alert],
             cefpython.JSDIALOGTYPE_CONFIRM:["confirm", CEFBrowser._js_confirm],
@@ -877,10 +877,10 @@ class ClientHandler():
         def js_continue(allow, user_input):
             self.active_js_dialog = None
             callback.Continue(allow, user_input)
-        p = dialog_types[dialogType][1]
-        p.text = messageText
+        p = dialog_types[dialog_type][1]
+        p.text = message_text
         p.js_continue = js_continue
-        p.default_prompt_text = defaultPromptText
+        p.default_prompt_text = default_prompt_text
         p.open()
         self.active_js_dialog = p
         return True
@@ -903,10 +903,10 @@ class ClientHandler():
 
     # KeyboardHandler
 
-    def OnPreKeyEvent(self, *largs):
+    def OnPreKeyEvent(self, browser, event, event_handle, is_keyboard_shortcut_out):
         pass
 
-    def OnKeyEvent(self, *largs):
+    def OnKeyEvent(self, browser, event, event_handle):
         pass
 
     # LifeSpanHandler
@@ -1114,32 +1114,32 @@ document.addEventListener("selectionchange", function (e) {
 """
             frame.ExecuteJavascript(jsCode)
 
-    def OnLoadEnd(self, browser, frame, httpStatusCode):
+    def OnLoadEnd(self, browser, frame, http_code):
         bw = self.browser_widgets[browser]
-        bw.dispatch("on_load_end", frame, httpStatusCode)
+        bw.dispatch("on_load_end", frame, http_code)
         #browser.SetZoomLevel(2.0) # this works at this point
 
-    def OnLoadError(self, browser, frame, errorCode, errorText, failedUrl):
+    def OnLoadError(self, browser, frame, error_code, error_text_out, failed_url):
         bw = self.browser_widgets[browser]
-        bw.dispatch("on_load_error", frame, errorCode, errorText, failedUrl)
+        bw.dispatch("on_load_error", frame, error_code, error_text_out, failed_url)
 
-    def OnRendererProcessTerminated(self, *largs):
-        Logger.info("OnRendererProcessTerminated", largs)
+    def OnRendererProcessTerminated(self, browser, status):
+        Logger.info("OnRendererProcessTerminated", browser, status)
 
     # RenderHandler
 
-    def GetRootScreenRect(self, *largs):
+    def GetRootScreenRect(self, browser, rect_out):
         pass
 
-    def GetViewRect(self, browser, rect):
+    def GetViewRect(self, browser, rect_out):
         width, height = self.browser_widgets[browser]._texture.size
-        rect.append(0)
-        rect.append(0)
-        rect.append(width)
-        rect.append(height)
+        rect_out.append(0)
+        rect_out.append(0)
+        rect_out.append(width)
+        rect_out.append(height)
         return True
 
-    def GetScreenPoint(self, *largs):
+    def GetScreenPoint(self, browser, view_x, view_y, screen_coordinates_out):
         pass
 
     def GetScreenInfo(self, *largs):
@@ -1151,26 +1151,26 @@ document.addEventListener("selectionchange", function (e) {
         if shown:
             bw.add_widget(bw._popup)
 
-    def OnPopupSize(self, browser, rect):
+    def OnPopupSize(self, browser, rect_out):
         bw = self.browser_widgets[browser]
-        bw._popup.rpos = (rect[0], rect[1])
-        bw._popup.size = (rect[2], rect[3])
+        bw._popup.rpos = (rect_out[0], rect_out[1])
+        bw._popup.size = (rect_out[2], rect_out[3])
 
-    def OnPaint(self, browser, paintElementType, dirtyRects, buf, width, height):
+    def OnPaint(self, browser, element_type, dirty_rects, paint_buffer, width, height):
         #print("ON PAINT", browser, time.time())
         if 'enable-fps' in CEFBrowser._flags:
             if not hasattr(self, 'lastPaints'):
                 self.lastPaints = []
             self.lastPaints.append(time.time())
-            while 10<len(self.lastPaints):
+            while 10 < len(self.lastPaints):
                 self.lastPaints.pop(0)
-            if 1<len(self.lastPaints):
+            if 1 < len(self.lastPaints):
                 Logger.debug("CEFBrowser: FPS: "+str(len(self.lastPaints)/(self.lastPaints[-1]-self.lastPaints[0])))
         try:
             pmvfm = ctypes.pythonapi.PyMemoryView_FromMemory
             pmvfm.restype = ctypes.py_object
             pmvfm.argtypes = (ctypes.c_void_p, ctypes.c_int64, ctypes.c_int)
-            view = pmvfm(buf.GetIntPointer(), width*height*4, 0x200)
+            view = pmvfm(paint_buffer.GetIntPointer(), width*height*4, 0x200)
         except AttributeError:
             """ # The following code gives a segmentation fault:
             view = buffer('')
@@ -1180,54 +1180,54 @@ document.addEventListener("selectionchange", function (e) {
             res = pbfi(id(view), None, buf.GetIntPointer(), width*height*4, 0, 0)
             print(pbfi, res)
             """
-            view = buf.GetString(mode="bgra", origin="top-left")
+            view = paint_buffer.GetString(mode="bgra", origin="top-left")
         bw = self.browser_widgets[browser]
-        if paintElementType != cefpython.PET_VIEW:
-            if bw._popup._texture.width*bw._popup._texture.height*4!=width*height*4:
+        if element_type != cefpython.PET_VIEW:
+            if bw._popup._texture.width*bw._popup._texture.height*4 != width*height*4:
                 return True  # prevent segfault
             bw._popup._texture.blit_buffer(view, colorfmt="bgra", bufferfmt="ubyte")
             bw._popup._update_rect()
             return True
-        if bw._texture.width*bw._texture.height*4!=width*height*4:
+        if bw._texture.width*bw._texture.height*4 != width*height*4:
             return True  # prevent segfault
         bw._texture.blit_buffer(view, colorfmt="bgra", bufferfmt="ubyte")
         bw._update_rect()
         return True
 
-    def OnCursorChange(self, *largs):
+    def OnCursorChange(self, browser, cursor):
         pass
 
-    def OnScrollOffsetChanged(self, *largs):
+    def OnScrollOffsetChanged(self, browser):
         pass
 
     # RequestHandler
 
-    def OnBeforeBrowse(self, browser, frame, request, isRedirect):
+    def OnBeforeBrowse(self, browser, frame, request, is_redirect):
         frame.ExecuteJavascript("try {__kivy__on_escape();} catch (err) {}")
 
-    def OnBeforeResourceLoad(self, *largs):
+    def OnBeforeResourceLoad(self, browser, frame, request):
         pass
 
-    def GetResourceHandler(self, *largs):
+    def GetResourceHandler(self, browser, frame, request):
         pass
 
-    def OnResourceRedirect(self, *largs):
+    def OnResourceRedirect(self, **kwargs):
         pass
 
-    def GetAuthCredentials(self, *largs):
+    def GetAuthCredentials(self, **kwargs):
         pass
 
-    def OnQuotaRequest(self, *largs):
+    def OnQuotaRequest(self, **kwargs):
         pass
 
-    def GetCookieManager(self, browser, mainUrl):
+    def GetCookieManager(self, browser, main_url):
         cookie_manager = cefpython.CookieManager.GetGlobalManager()
         if cookie_manager:
             return cookie_manager
         else:
             Logger.warning("No cookie manager found!")
 
-    def OnProtocolExecution(self, *largs):
+    def OnProtocolExecution(self, **kwargs):
         pass
 
     # RessourceHandler
@@ -1259,15 +1259,16 @@ def OnAfterCreated(browser):
             Window.add_widget(cb)
 cefpython.SetGlobalClientCallback("OnAfterCreated", OnAfterCreated)
 
-def OnCertificateError(err, url, cb):
+def OnCertificateError(cert_error, request_url, callback):
     if CEFBrowser.certificate_error_handler:
         try:
-            res = CEFBrowser.certificate_error_handler(CEFBrowser(), err, url)
+            res = CEFBrowser.certificate_error_handler(CEFBrowser(),
+                                                       cert_error, request_url)
             if res:
-                cb.Continue(True)
+                callback.Continue(True)
                 return True
         except Exception as err:
-            Logger.warning("CEFBrowser: Error in certificate error handler.\n%s", err)
+            Logger.warning("CEFBrowser: Error in cert-error handler.\n%s", err)
 cefpython.SetGlobalClientCallback("OnCertificateError", OnCertificateError)
 
 Builder.load_file(os.path.join(os.path.realpath(os.path.dirname(__file__)), "cefbrowser.kv"))
@@ -1284,9 +1285,11 @@ if __name__ == "__main__":
     from kivy.uix.textinput import TextInput
     cef_test_url = "file://"+os.path.join(os.path.dirname(os.path.realpath(__file__)), "test.html")
     CEFBrowser.update_flags({'enable-copy-paste':True, 'enable-fps':True})
+
     class CEFBrowserApp(App):
         def timeout(self, *largs):
             self.cb1.url = cef_test_url
+
         def build(self):
             class FocusButton(FocusBehavior, Button):
                 pass
@@ -1296,15 +1299,20 @@ if __name__ == "__main__":
             ti2 = TextInput(text="ti2", pos=(wid+1,hei-50), size=(wid-1, 50))
             fb1 = FocusButton(text="ti1", pos=(0,hei-100), size=(wid-1, 50))
             fb2 = FocusButton(text="ti2", pos=(wid+1,hei-100), size=(wid-1, 50))
+
             def url_handler(self, url):
                 print("URL HANDLER", url)
+
             def title_handler(self, title):
                 print("TITLE HANDLER", title)
+
             def close_handler(self):
                 print("CLOSE HANDLER")
+
             def popup_policy_handler(self, popup_url):
                 print("POPUP POLICY HANDLER", popup_url)
                 return True
+
             def popup_handler(self, popup_browser):
                 print("POPUP HANDLER", popup_browser)
                 pw = None
