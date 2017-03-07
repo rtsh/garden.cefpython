@@ -23,7 +23,7 @@ kivy.require("1.8.0")
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.logger import Logger
-
+from kivy.utils import platform
 
 PLATFORM = kivy.platform
 PYVERSION = sys.version_info[0]
@@ -257,7 +257,9 @@ def cefpython_initialize(CEFBrowser):
         os.makedirs(logs_path, 0o0700)
     default_settings["log_file"] = os.path.join(logs_path, "cefpython.log")
 
-    cefpython.WindowUtils.InstallX11ErrorHandlers()
+    if platform == "linux":
+        cefpython.WindowUtils.InstallX11ErrorHandlers()
+
     try:
         cefpython.Initialize(default_settings, CEFBrowser._command_line_switches)
     except Exception as err:
