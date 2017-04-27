@@ -6,14 +6,12 @@ Cef Keyboard management is complex, so we outsourced it to this file for
 better readability.
 '''
 
-__all__ = ('CEFKeyboardManager')
-
 from kivy.core.window import Window
-from kivy.uix.vkeyboard import VKeyboard
-from .lib.cefpython import cefpython
+
+from .cefpython import cefpython
 
 
-class CEFKeyboardManagerSingleton():
+class CEFKeyboardManagerSingleton:
     # Kivy does not provide modifiers in on_key_up, but these
     # must be sent to CEF as well.
     is_shift1 = False
@@ -25,7 +23,7 @@ class CEFKeyboardManagerSingleton():
 
     def __init__(self, *largs, **dargs):
         pass
-    
+
     def reset_all_modifiers(self):
         self.is_shift1 = False
         self.is_shift2 = False
@@ -41,7 +39,7 @@ class CEFKeyboardManagerSingleton():
         modifiers = list()
         keycode = (ord(text), text)
         self.process_key_down(browser, None, keycode, text, modifiers)
-    
+
     def kivy_on_key_down(self, browser, keyboard, keycode, text, modifiers):
         whitelist = (9, 8, 13, 27)
         if Window.__class__.__module__ == 'kivy.core.window.window_sdl2' and \
@@ -101,27 +99,27 @@ class CEFKeyboardManagerSingleton():
         # Do not send RAW-key for key-codes 35-40 aka ($#%&
         if key[0] not in range(35, 40+1):
             # Send key event to cef: RAWKEYDOWN
-            keyEvent = {
+            key_event = {
                     "type": cefpython.KEYEVENT_RAWKEYDOWN,
                     "windows_key_code": keycode,
                     "character": charcode,
                     "unmodified_character": charcode,
                     "modifiers": cef_modifiers,
             }
-            # print("- DOWN RAW SendKeyEvent: %s" % keyEvent)
-            browser.SendKeyEvent(keyEvent)
+            # print("- DOWN RAW SendKeyEvent: %s" % key_event)
+            browser.SendKeyEvent(key_event)
 
         # Send key event to cef: CHAR
         if text:
-            keyEvent = {
+            key_event = {
                     "type": cefpython.KEYEVENT_CHAR,
                     "windows_key_code": keycode,
                     "character": charcode,
                     "unmodified_character": charcode,
-                    "modifiers": cef_modifiers
+                    "modifiers": cef_modifiers,
             }
-            # print("- DOWN text SendKeyEvent: %s" % keyEvent)
-            browser.SendKeyEvent(keyEvent)
+            # print("- DOWN text SendKeyEvent: %s" % key_event)
+            browser.SendKeyEvent(key_event)
 
         if key[0] == 304:
             self.is_shift1 = True
@@ -158,15 +156,15 @@ class CEFKeyboardManagerSingleton():
         charcode = key[0]
 
         # Send key event to cef: KEYUP
-        keyEvent = {
+        key_event = {
                 "type": cefpython.KEYEVENT_KEYUP,
                 "windows_key_code": keycode,
                 "character": charcode,
                 "unmodified_character": charcode,
-                "modifiers": cef_modifiers
+                "modifiers": cef_modifiers,
         }
-        # print("- UP SendKeyEvent: %s" % keyEvent)
-        browser.SendKeyEvent(keyEvent)
+        # print("- UP SendKeyEvent: %s" % key_event)
+        browser.SendKeyEvent(key_event)
 
         if key[0] == 304:
             self.is_shift1 = False
@@ -201,51 +199,51 @@ class CEFKeyboardManagerSingleton():
 
         other_keys_map = {
             # Escape
-            "27":27,
+            "27": 27,
             # F1-F12
-            "282":112, "283":113, "284":114, "285":115,
-            "286":116, "287":117, "288":118, "289":119,
-            "290":120, "291":121, "292":122, "293":123,
+            "282": 112, "283": 113, "284": 114, "285": 115,
+            "286": 116, "287": 117, "288": 118, "289": 119,
+            "290": 120, "291": 121, "292": 122, "293": 123,
             # Tab
-            "9":9,
+            "9": 9,
             # Left Shift, Right Shift
-            "304":16, "303":16,
+            "304": 16, "303": 16,
             # Left Ctrl, Right Ctrl
-            "306":17, "305": 17,
+            "306": 17, "305": 17,
             # Left Alt, Right Alt
             # TODO: left alt is_system_key=True in CEF but only when RAWKEYDOWN
-            "308":18, "313":225,
+            "308": 18, "313": 225,
             # Backspace
-            "8":8,
+            "8": 8,
             # Enter
-            "13":13,
+            "13": 13,
             # PrScr, ScrLck, Pause
-            "316":42, "302":145, "19":19,
+            "316": 42, "302": 145, "19": 19,
             # Insert, Delete,
             # Home, End,
             # Pgup, Pgdn
-            "277":45, "127":46,
-            "278":36, "279":35,
-            "280":33, "281":34,
+            "277": 45, "127": 46,
+            "278": 36, "279": 35,
+            "280": 33, "281": 34,
             # Arrows (left, up, right, down)
-            "276":37, "273":38, "275":39, "274":40,
+            "276": 37, "273": 38, "275": 39, "274": 40,
             # tilde
-            "96":192,
+            "96": 192,
             # minus, plus
-            "45":189, "61":187,
+            "45": 189, "61": 187,
             # square brackets / curly brackets, backslash
-            "91":219, "93":221, "92":220,
+            "91": 219, "93": 221, "92": 220,
             # windows key
-            "311":91,
+            "311": 91,
             # colon / semicolon
             "59": 186,
             # single quote / double quote
-            "39":222,
+            "39": 222,
             # comma, dot, slash
-            "44":188, "46":190, "47":91,
+            "44": 188, "46": 190, "47": 91,
             # context menu key is 93, but disable as it crashes app after
             # context menu is shown.
-            "319":0,
+            "319": 0,
         }
         if str(kivycode) in other_keys_map:
             cefcode = other_keys_map[str(kivycode)]

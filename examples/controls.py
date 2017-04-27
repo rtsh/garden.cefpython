@@ -15,4 +15,3 @@ if __name__ == '__main__':
             return Factory.ControlledCEFBrowser()
 
     ControlsApp().run()
-
