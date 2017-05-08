@@ -192,11 +192,6 @@ class CEFKeyboardManagerSingleton:
         #   OnPreKeyEvent info for key events and replacate it here.
         #   (key codes can also be found on MSDN Virtual-key codes page)
 
-        # Must map basic letters, otherwise eg. ctrl+a to select all
-        # text won't work. (97-122 kivy <> 65-90 cef)
-        if 97 <= kivycode <= 122:
-            cefcode = kivycode - 32
-
         other_keys_map = {
             # Escape
             "27": 27,
