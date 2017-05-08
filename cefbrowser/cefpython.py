@@ -54,12 +54,13 @@ def cefpython_initialize(cef_browser_cls):
 
     default_settings = {
         # "debug": True,
-        "log_severity": cefpython.LOGSEVERITY_INFO,
+        # "log_severity": cefpython.LOGSEVERITY_INFO,
         # "release_dcheck_enabled": True,  # Enable only when debugging.
         "locales_dir_path": os.path.join(md, "locales"),
         "resources_dir_path": md,
         "browser_subprocess_path": os.path.join(md, "subprocess"),
         "unique_request_context_per_browser": True,
+        "context_menu": {"enabled": False, },
     }
     default_settings.update(cef_browser_cls._settings)
     caches_path = os.path.join(sd, "caches")
