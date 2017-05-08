@@ -1595,15 +1595,16 @@ document.addEventListener("selectionchange", function (e) {
 
     def _OnCertificateError(  # noqa: N802
         self,
-        cert_err,
+        cert_error,
         request_url,
         callback,
     ):
-        Logger.warning("OnCertificateError", cert_err, request_url, callback)
+        Logger.warning("OnCertificateError %s %s %s" %
+                       (cert_error, request_url, callback))
         if CEFBrowser.certificate_error_handler:
             try:
                 res = CEFBrowser.certificate_error_handler(
-                    CEFBrowser(), cert_err, request_url)
+                    CEFBrowser(), cert_error, request_url)
                 if res:
                     callback.Continue(True)
                     return
