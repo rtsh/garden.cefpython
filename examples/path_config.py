@@ -14,7 +14,6 @@ import os
 from kivy.app import App
 from kivy.garden.cefpython import CEFBrowser
 from kivy.logger import Logger
-from kivy.uix.label import Label
 
 
 if __name__ == '__main__':
@@ -25,8 +24,11 @@ if __name__ == '__main__':
             # CEFBrowser.set_caches_path(os.path.realpath("./cef_caches"))
             # CEFBrowser.set_cookies_path(os.path.realpath("./cef_cookies"))
             # CEFBrowser.set_logs_path(os.path.realpath("./cef_logs"))
-            Logger.info("Example: The CEF pathes have been set to \n- Cache %s\n- Cookies %s\n- Logs %s", CEFBrowser._caches_path, CEFBrowser._cookies_path, CEFBrowser._logs_path)
-            
+            Logger.info("Example: The CEF pathes have been set to")
+            Logger.info("- Cache %s", CEFBrowser._caches_path)
+            Logger.info("- Cookies %s", CEFBrowser._cookies_path)
+            Logger.info("- Logs %s", CEFBrowser._logs_path)
+
             # Create CEFBrowser instance. Go to test-site.
             cb = CEFBrowser(url="http://jegger.ch/datapool/app/test.html")
             return cb

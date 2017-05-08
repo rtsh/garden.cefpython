@@ -7,7 +7,6 @@ garden.cefpython
 2garden.cefpython
 .idea
 *debug.log
-cefbrowser/lib/cefpython/*
 cef_data
 cef_caches
 cef_cookies

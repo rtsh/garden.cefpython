@@ -18,4 +18,3 @@ if __name__ == '__main__':
             return CEFBrowser(url="http://jegger.ch/datapool/app/test_input.html")
 
     SimpleBrowserApp().run()
-
