@@ -1200,6 +1200,14 @@ window.print = function () {
     console.log("Print dialog blocked");
 };
 
+window.onload = function(){
+    document.querySelectorAll('input[type=file]').forEach(function (elem) {
+        elem.onclick = function () {
+            return false;
+        }
+    });
+}
+
 
 // Keyboard management
 
