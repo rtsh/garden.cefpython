@@ -31,12 +31,6 @@ from kivy.uix.widget import Widget
 from .cefpython import cefpython, cefpython_initialize
 from .cefkeyboard import CEFKeyboardManager
 
-resources.resource_add_path(os.path.abspath(os.path.dirname(__file__)))
-Builder.load_file(resources.resource_find("cefbrowser.kv"))
-cef_browser_js_alert = Factory.CEFBrowserJSAlert()
-cef_browser_js_confirm = Factory.CEFBrowserJSConfirm()
-cef_browser_js_prompt = Factory.CEFBrowserJSPrompt()
-
 
 class CEFAlreadyInitialized(Exception):
     pass

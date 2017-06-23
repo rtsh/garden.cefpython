@@ -146,6 +146,8 @@
                 size_hint_x: .5
             TextInput:
                 id: text_input_username
+                multiline: False
+                write_tab: False
             Label:
                 text: "Password"
                 halign: "left"
@@ -155,6 +157,10 @@
             TextInput:
                 id: text_input_pw
                 password: True
+                multiline: False
+                write_tab: False
+                on_text_validate:
+                    login_button.trigger_action()
         BoxLayout:
             size_hint_y: None
             height: 50
@@ -166,6 +172,7 @@
                     root.callback.Cancel()
                     root.dismiss()
             Button:
+                id: login_button
                 text: "Login"
                 on_press:
                     root.callback.Continue(text_input_username.text, text_input_pw.text)
