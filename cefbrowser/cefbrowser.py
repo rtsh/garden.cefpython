@@ -1564,7 +1564,16 @@ document.addEventListener("selectionchange", function (e) {
         scheme,
         callback,
     ):
-        pass  # TODO: Implement this
+        Logger.debug("GetAuthCredentials: "
+                       "is_proxy: %s, host: %s, port: %s, "
+                       "realm: %s, scheme: %s"
+                       % (is_proxy, host, port, realm, scheme))
+        ad = CEFBrowser._auth_dialog
+        ad.host = host
+        ad.callback = callback
+        ad.scheme = scheme
+        ad.open()
+        return True
 
     def OnQuotaRequest(  # noqa: N802
         self,
@@ -1681,6 +1690,7 @@ Builder.load_file(os.path.join(
 CEFBrowser._js_alert = Factory.CEFBrowserJSAlert()
 CEFBrowser._js_confirm = Factory.CEFBrowserJSConfirm()
 CEFBrowser._js_prompt = Factory.CEFBrowserJSPrompt()
+CEFBrowser._auth_dialog = Factory.CEFBrowserAuthDialog()
 
 
 if __name__ == "__main__":
