@@ -6,9 +6,8 @@ Cef Keyboard management is complex, so we outsourced it to this file for
 better readability.
 '''
 
-from kivy.core.window import Window
-
 from .cefpython import cefpython
+from kivy.core.window import Window
 
 
 class CEFKeyboardManagerSingleton:
@@ -97,14 +96,14 @@ class CEFKeyboardManagerSingleton:
             charcode = ord(text)
 
         # Do not send RAW-key for key-codes 35-40 aka ($#%&
-        if key[0] not in range(35, 40+1):
+        if key[0] not in range(35, 40 + 1):
             # Send key event to cef: RAWKEYDOWN
             key_event = {
-                    "type": cefpython.KEYEVENT_RAWKEYDOWN,
-                    "windows_key_code": keycode,
-                    "character": charcode,
-                    "unmodified_character": charcode,
-                    "modifiers": cef_modifiers,
+                "type": cefpython.KEYEVENT_RAWKEYDOWN,
+                "windows_key_code": keycode,
+                "character": charcode,
+                "unmodified_character": charcode,
+                "modifiers": cef_modifiers
             }
             # print("- DOWN RAW SendKeyEvent: %s" % key_event)
             browser.SendKeyEvent(key_event)
@@ -112,11 +111,11 @@ class CEFKeyboardManagerSingleton:
         # Send key event to cef: CHAR
         if text:
             key_event = {
-                    "type": cefpython.KEYEVENT_CHAR,
-                    "windows_key_code": keycode,
-                    "character": charcode,
-                    "unmodified_character": charcode,
-                    "modifiers": cef_modifiers,
+                "type": cefpython.KEYEVENT_CHAR,
+                "windows_key_code": keycode,
+                "character": charcode,
+                "unmodified_character": charcode,
+                "modifiers": cef_modifiers
             }
             # print("- DOWN text SendKeyEvent: %s" % key_event)
             browser.SendKeyEvent(key_event)
@@ -157,11 +156,11 @@ class CEFKeyboardManagerSingleton:
 
         # Send key event to cef: KEYUP
         key_event = {
-                "type": cefpython.KEYEVENT_KEYUP,
-                "windows_key_code": keycode,
-                "character": charcode,
-                "unmodified_character": charcode,
-                "modifiers": cef_modifiers,
+            "type": cefpython.KEYEVENT_KEYUP,
+            "windows_key_code": keycode,
+            "character": charcode,
+            "unmodified_character": charcode,
+            "modifiers": cef_modifiers
         }
         # print("- UP SendKeyEvent: %s" % key_event)
         browser.SendKeyEvent(key_event)
