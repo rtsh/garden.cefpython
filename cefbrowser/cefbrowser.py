@@ -416,6 +416,8 @@ class CEFBrowser(Widget, FocusBehavior):
         rect,
         attributes,
     ):
+        if not keyboard_widget:
+            return
         if not keyboard_widget.docked:
             if rect and len(rect) == 4:
                 keyboard_widget.pos = (
@@ -941,7 +943,7 @@ class ClientHandler:
     def OnTitleChange(self, browser, title):  # noqa: N802
         self.browser_widgets[browser].title = title
 
-    def OnTooltip(self, text_out):  # noqa: N802
+    def OnTooltip(self, browser, text_out):  # noqa: N802
         text_out.append("")
         return True
 
