@@ -6,17 +6,14 @@ This library provides functions to import and initialize cefpython found in
 PYTHONPATH.
 """
 
+from kivy.app import App
+from kivy.clock import Clock
+from kivy.logger import Logger
 import atexit
 import os
 import signal
 import sys
 import tempfile
-
-import kivy
-from kivy.app import App
-from kivy.clock import Clock
-from kivy.logger import Logger
-kivy.require("1.8.0")
 
 
 # Try import from package (PYTHONPATH)

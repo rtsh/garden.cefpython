@@ -5,31 +5,28 @@ The CEFBrowser Widget actually displays the browser. It displays ONLY the
 browser. If you need controls or tabs, check out the `examples`
 """
 
-import ctypes
+from .cefkeyboard import CEFKeyboardManager
+from .cefpython import cefpython, cefpython_initialize
 from functools import partial
+from kivy.core.clipboard import Clipboard
+from kivy.core.window import Window
+from kivy.factory import Factory
+from kivy.graphics import Color, Rectangle
+from kivy.graphics.texture import Texture
+from kivy.lang import Builder
+from kivy.logger import Logger
+from kivy.properties import BooleanProperty
+from kivy.properties import NumericProperty
+from kivy.properties import ReferenceListProperty
+from kivy.properties import StringProperty
+from kivy.uix.behaviors import FocusBehavior
+from kivy.uix.bubble import Bubble, BubbleButton
+from kivy.uix.widget import Widget
+import ctypes
 import json
 import os
 import random
 import time
-
-from kivy.core.clipboard import Clipboard
-from kivy.core.window import Window
-from kivy.graphics import Color, Rectangle
-from kivy.graphics.texture import Texture
-from kivy.factory import Factory
-from kivy.lang import Builder
-from kivy.logger import Logger
-from kivy.properties import StringProperty
-from kivy.properties import NumericProperty
-from kivy.properties import BooleanProperty
-from kivy.properties import ReferenceListProperty
-from kivy import resources
-from kivy.uix.behaviors import FocusBehavior
-from kivy.uix.bubble import Bubble, BubbleButton
-from kivy.uix.widget import Widget
-
-from .cefpython import cefpython, cefpython_initialize
-from .cefkeyboard import CEFKeyboardManager
 
 
 class CEFAlreadyInitialized(Exception):
@@ -296,21 +293,23 @@ class CEFBrowser(Widget, FocusBehavior):
             self._browser.NotifyScreenInfoChanged()
         try:
             self._keyboard_update(**self.__keyboard_state)
-        except:
+        except Exception:
             pass
 
     def _on_parent(self, obj, parent):
         self._browser.WasHidden(not parent)  # optimize the shit out of CEF
         try:
             self._keyboard_update(**self.__keyboard_state)
-        except:
+        except Exception:
             pass
 
     def _on_focus(self, obj, focus):
         super(CEFBrowser, self)._on_focus(obj, focus)
         if not focus and self.__keyboard_state["shown"]:
             self._browser.GetMainFrame().ExecuteJavascript(
-                "__kivy__activeKeyboardElement.blur();")
+                "if (__kivy__activeKeyboardElement) "
+                "{ __kivy__activeKeyboardElement.blur(); }"
+            )
 
     def _update_rect(self):
         if self.__rect:
@@ -417,6 +416,8 @@ class CEFBrowser(Widget, FocusBehavior):
         rect,
         attributes,
     ):
+        if not keyboard_widget:
+            return
         if not keyboard_widget.docked:
             if rect and len(rect) == 4:
                 keyboard_widget.pos = (
@@ -436,6 +437,8 @@ class CEFBrowser(Widget, FocusBehavior):
         rect,
         attributes,
     ):  # TODO: place right, left, etc. see cefkivy
+        if not keyboard_widget:
+            return
         if not keyboard_widget.docked:
             cls.keyboard_position_simple(
                 browser, keyboard_widget, rect, attributes)
@@ -518,10 +521,10 @@ class CEFBrowser(Widget, FocusBehavior):
             return
 
         x = touch.x - self.pos[0]
-        y = self.height-touch.y + self.pos[1]
+        y = self.height - touch.y + self.pos[1]
 
         x_start = touch.opos[0] - self.pos[0]
-        y_start = self.height-touch.opos[1] + self.pos[1]
+        y_start = self.height - touch.opos[1] + self.pos[1]
 
         if len(self._touches) == 1:
             if not touch.is_scrolling or touch.is_right_click:
@@ -579,7 +582,7 @@ class CEFBrowser(Widget, FocusBehavior):
                     # Set touch state to scrolling
                     _touch.is_scrolling = True
                 self.cef_mouse_wheel(
-                    touch.x, self.height-touch.pos[1], dx, -dy,
+                    touch.x, self.height - touch.pos[1], dx, -dy,
                 )
         return True
 
@@ -587,7 +590,7 @@ class CEFBrowser(Widget, FocusBehavior):
         if touch.grab_current is not self:
             return
 
-        y = self.height-touch.pos[1] + self.pos[1]
+        y = self.height - touch.pos[1] + self.pos[1]
         x = touch.x - self.pos[0]
 
         if self.is_html5_drag:
@@ -600,11 +603,11 @@ class CEFBrowser(Widget, FocusBehavior):
                 x = touch.x
                 if x == 0:
                     x = -1
-                if x == self.width-1:
+                if x == self.width - 1:
                     x = self.width
                 if y == 0:
                     y = -1
-                if y == self.height-1:
+                if y == self.height - 1:
                     y = self.height
                 self.cef_drag_source_ended_at(x, y,
                                               self.current_drag_operation)
@@ -633,7 +636,8 @@ class CEFBrowser(Widget, FocusBehavior):
                 if touch.is_dragging:
                     # Drag end (mouse up)
                     self.cef_mouse_click(
-                        touch.ppos[0], self.height-touch.ppos[1] + self.pos[1],
+                        touch.ppos[0],
+                        self.height - touch.ppos[1] + self.pos[1],
                         cefpython.MOUSEBUTTON_LEFT,
                         mouse_up=True, click_count=1,
                     )
@@ -703,7 +707,7 @@ class CEFBrowser(Widget, FocusBehavior):
     def is_inside_window(self, x, y):
         # When mouse is out of app window Kivy still generates move events
         # at the borders with x=0, x=width-1, y=0, y=height-1.
-        if (0 < x < Window.width-1) and (0 < y < Window.height-1):
+        if (0 < x < Window.width - 1) and (0 < y < Window.height - 1):
             return True
         return False
 
@@ -790,7 +794,7 @@ class CEFBrowserJSFunctionProxy:
         self.key = key
 
     def __call__(self, *largs):
-        js_code = str(self.key)+"("
+        js_code = str(self.key) + "("
         first = True
         for arg in largs:
             if not first:
@@ -914,7 +918,7 @@ class CEFBrowserCutCopyPasteBubble(Bubble):
                 try:
                     t = Clipboard.get(type)
                     break
-                except:
+                except Exception:
                     pass
         print("PASTE", t)
 
@@ -939,14 +943,14 @@ class ClientHandler:
     def OnTitleChange(self, browser, title):  # noqa: N802
         self.browser_widgets[browser].title = title
 
-    def OnTooltip(self, text_out):  # noqa: N802
+    def OnTooltip(self, browser, text_out):  # noqa: N802
         text_out.append("")
         return True
 
     def OnStatusMessage(self, browser, value):  # noqa: N802
         Logger.info("CEFBrowser: Status: %s", value)
 
-    def OnConsoleMessage(self, browser, message, source, line):  # noqa: N802
+    def OnConsoleMessage(self, browser, level, message, source, line):  # noqa: N802
         Logger.info("CEFBrowser: Console: %s - %s(%i)", message, source, line)
         return True  # We handled it
 
@@ -1090,7 +1094,7 @@ class ClientHandler:
             )
             allow_popup = False
         if allow_popup:
-            r = random.randint(1, 2**31-1)
+            r = random.randint(1, 2 ** 31 - 1)
             wi = cefpython.WindowInfo()
             wi.SetAsChild(0, [0, 0, 0, 0])
             wi.SetAsOffscreen(r)
@@ -1156,7 +1160,7 @@ class ClientHandler:
                     "CEFBrowser: Close handler failed with error: %s", err)
         try:
             bw.parent.remove_widget(bw)
-        except:
+        except Exception:
             pass
         del self.browser_widgets[browser]
         return False
@@ -1452,7 +1456,7 @@ document.addEventListener("selectionchange", function (e) {
             pmvfm = ctypes.pythonapi.PyMemoryView_FromMemory
             pmvfm.restype = ctypes.py_object
             pmvfm.argtypes = (ctypes.c_void_p, ctypes.c_int64, ctypes.c_int)
-            view = pmvfm(paint_buffer.GetIntPointer(), width*height*4, 0x200)
+            view = pmvfm(paint_buffer.GetIntPointer(), width * height * 4, 0x200)
         except AttributeError:
             """
             # The following code gives a segmentation fault:
@@ -1470,14 +1474,14 @@ document.addEventListener("selectionchange", function (e) {
         if element_type != cefpython.PET_VIEW:
             if (
                 bw._popup._texture.width * bw._popup._texture.height * 4 !=
-                width*height*4
+                width * height * 4
             ):
                 return True  # prevent segfault
             bw._popup._texture.blit_buffer(
                 view, colorfmt="bgra", bufferfmt="ubyte")
             bw._popup._update_rect()
             return True
-        if bw._texture.width * bw._texture.height * 4 != width*height * 4:
+        if bw._texture.width * bw._texture.height * 4 != width * height * 4:
             return True  # prevent segfault
         bw._texture.blit_buffer(view, colorfmt="bgra", bufferfmt="ubyte")
         bw._update_rect()
@@ -1526,6 +1530,7 @@ document.addEventListener("selectionchange", function (e) {
         browser,
         frame,
         request,
+        user_gesture,
         is_redirect,
     ):
         frame.ExecuteJavascript("try {__kivy__on_escape();} catch (err) {}")
@@ -1559,9 +1564,9 @@ document.addEventListener("selectionchange", function (e) {
         callback,
     ):
         Logger.debug("GetAuthCredentials: "
-                       "is_proxy: %s, host: %s, port: %s, "
-                       "realm: %s, scheme: %s"
-                       % (is_proxy, host, port, realm, scheme))
+                     "is_proxy: %s, host: %s, port: %s, "
+                     "realm: %s, scheme: %s"
+                     % (is_proxy, host, port, realm, scheme))
         ad = CEFBrowser._auth_dialog
         ad.host = host
         ad.callback = callback
@@ -1693,7 +1698,7 @@ if __name__ == "__main__":
     from kivy.clock import Clock
     from kivy.uix.button import Button
     from kivy.uix.textinput import TextInput
-    cef_test_url = "file://"+os.path.join(
+    cef_test_url = "file://" + os.path.join(
         os.path.dirname(os.path.realpath(__file__)),
         "test.html",
     )
@@ -1706,16 +1711,16 @@ if __name__ == "__main__":
         def build(self):
             class FocusButton(FocusBehavior, Button):
                 pass
-            wid = Window.width/2
+            wid = Window.width / 2
             hei = Window.height
             ti1 = TextInput(
-                text="ti1", pos=(0, hei-50), size=(wid-1, 50))
+                text="ti1", pos=(0, hei - 50), size=(wid - 1, 50))
             ti2 = TextInput(
-                text="ti2", pos=(wid+1, hei-50), size=(wid-1, 50))
+                text="ti2", pos=(wid + 1, hei - 50), size=(wid - 1, 50))
             fb1 = FocusButton(
-                text="ti1", pos=(0, hei-100), size=(wid-1, 50))
+                text="ti1", pos=(0, hei - 100), size=(wid - 1, 50))
             fb2 = FocusButton(
-                text="ti2", pos=(wid+1, hei-100), size=(wid-1, 50))
+                text="ti2", pos=(wid + 1, hei - 100), size=(wid - 1, 50))
 
             def url_handler(self, url):
                 print("URL HANDLER", url)
@@ -1737,15 +1742,15 @@ if __name__ == "__main__":
                     pw = client_handler.browser_widgets[key].parent
                     if pw:
                         break
-                popup_browser.pos = (Window.width/4, Window.height/4)
-                popup_browser.size = (Window.width/2, Window.height/2)
+                popup_browser.pos = (Window.width / 4, Window.height / 4)
+                popup_browser.size = (Window.width / 2, Window.height / 2)
                 popup_browser.popup_handler = popup_handler
                 popup_browser.close_handler = close_handler
                 pw.add_widget(popup_browser)
 
             self.cb1 = CEFBrowser(
                 url="http://jegger.ch/datapool/app/test_popup.html",
-                pos=(0, 0), size=(wid-1, hei-100),
+                pos=(0, 0), size=(wid - 1, hei - 100),
             )
             self.cb1.popup_policy = popup_policy_handler
             self.cb1.popup_handler = popup_handler
@@ -1754,7 +1759,7 @@ if __name__ == "__main__":
             self.cb1.bind(title=title_handler)
             self.cb2 = CEFBrowser(
                 url="https://rentouch.ch/",
-                pos=(wid+1, 0), size=(wid-1, hei-100),
+                pos=(wid + 1, 0), size=(wid - 1, hei - 100),
             )
             self.cb2.popup_policy = popup_policy_handler
             self.cb2.popup_handler = popup_handler
